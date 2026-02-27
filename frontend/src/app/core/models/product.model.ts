@@ -9,8 +9,15 @@ export interface ProductVariant {
   size?: string;
   color?: string;
   sku: string;
+  barcode?: string;
   stock: number;
   priceAdjustment?: number;
+}
+
+export interface VariantBarcodeEntry {
+  size?: string;
+  color?: string;
+  barcode?: string;
 }
 
 export interface Product {
@@ -37,6 +44,7 @@ export interface CreateProductRequest {
   categoryId?: number;
   sizes: string[];
   colors: string[];
+  variantBarcodes?: VariantBarcodeEntry[];
 }
 
 export type UpdateProductRequest = CreateProductRequest;

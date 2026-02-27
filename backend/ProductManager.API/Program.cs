@@ -24,7 +24,7 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // CORS for Angular dev server
 builder.Services.AddCors(opt => opt.AddPolicy("Angular", p =>
-    p.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader()));
+    p.WithOrigins("http://localhost:4200", "http://localhost:60542").AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();
 

@@ -20,8 +20,8 @@ interface NavItem { label: string; icon: string; route: string; }
             </svg>
           </div>
           <div>
-            <p class="text-sm font-bold text-slate-900 leading-none">ProductHub</p>
-            <p class="text-[10px] text-slate-400 mt-0.5">Management System</p>
+            <p class="text-sm font-bold text-slate-900 leading-none">Uniform Australia</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">POS Management System</p>
           </div>
         </div>
       </div>
@@ -48,7 +48,7 @@ interface NavItem { label: string; icon: string; route: string; }
       <!-- Footer -->
       <div class="p-4 border-t border-slate-100">
         <div class="flex items-center gap-3 px-2 py-2 rounded-lg bg-slate-50">
-          <div class="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-content-center text-brand-700 text-xs font-bold flex items-center justify-center">
+          <div class="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-xs font-bold">
             A
           </div>
           <div class="flex-1 min-w-0">

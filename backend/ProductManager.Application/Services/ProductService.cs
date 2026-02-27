@@ -34,7 +34,7 @@ public class ProductService : IProductService
             CategoryId = dto.CategoryId,
             Sizes    = dto.Sizes.Distinct().Select(s => new ProductSize { Size = s }).ToList(),
             Colors   = dto.Colors.Distinct().Select(c => new ProductColor { Color = c }).ToList(),
-            Variants = BuildVariants(dto.SKU, dto.Sizes, dto.Colors)
+            Variants = BuildVariants(dto.SKU, dto.Sizes, dto.Colors, dto.VariantBarcodes)
         };
 
         var created = await _repo.AddAsync(product);
@@ -58,7 +58,7 @@ public class ProductService : IProductService
         product.UpdatedAt  = DateTime.UtcNow;
         product.Sizes      = dto.Sizes.Distinct().Select(s => new ProductSize { Size = s, ProductId = id }).ToList();
         product.Colors     = dto.Colors.Distinct().Select(c => new ProductColor { Color = c, ProductId = id }).ToList();
-        product.Variants   = BuildVariants(dto.SKU, dto.Sizes, dto.Colors);
+        product.Variants   = BuildVariants(dto.SKU, dto.Sizes, dto.Colors, dto.VariantBarcodes);
 
         await _repo.UpdateAsync(product);
         return ToDto((await _repo.GetProductWithDetailsAsync(id))!);
@@ -73,7 +73,9 @@ public class ProductService : IProductService
 
     // ─── Variant generation: cartesian product of Sizes × Colors ─────────────
 
-    private static List<ProductVariant> BuildVariants(string baseSku, List<string> sizes, List<string> colors)
+    private static List<ProductVariant> BuildVariants(
+        string baseSku, List<string> sizes, List<string> colors,
+        List<VariantBarcodeDto> barcodes)
     {
         var variants = new List<ProductVariant>();
         var distinctSizes  = sizes.Distinct().Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
@@ -81,36 +83,41 @@ public class ProductService : IProductService
 
         if (distinctSizes.Count > 0 && distinctColors.Count > 0)
         {
-            // Full cartesian product
             foreach (var size in distinctSizes)
                 foreach (var color in distinctColors)
-                    variants.Add(NewVariant(baseSku, size, color));
+                    variants.Add(NewVariant(baseSku, size, color, barcodes));
         }
         else if (distinctSizes.Count > 0)
         {
             foreach (var size in distinctSizes)
-                variants.Add(NewVariant(baseSku, size, null));
+                variants.Add(NewVariant(baseSku, size, null, barcodes));
         }
         else if (distinctColors.Count > 0)
         {
             foreach (var color in distinctColors)
-                variants.Add(NewVariant(baseSku, null, color));
+                variants.Add(NewVariant(baseSku, null, color, barcodes));
         }
 
         return variants;
     }
 
-    private static ProductVariant NewVariant(string baseSku, string? size, string? color)
+    private static ProductVariant NewVariant(
+        string baseSku, string? size, string? color, List<VariantBarcodeDto> barcodes)
     {
         var parts = new[] { baseSku, size, color }
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .Select(p => p!.ToUpper().Replace(" ", "-"));
 
+        var barcode = barcodes.FirstOrDefault(b =>
+            string.Equals(b.Size, size, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(b.Color, color, StringComparison.OrdinalIgnoreCase))?.Barcode;
+
         return new ProductVariant
         {
-            Size  = size,
-            Color = color,
-            SKU   = string.Join("-", parts)
+            Size    = size,
+            Color   = color,
+            SKU     = string.Join("-", parts),
+            Barcode = barcode
         };
     }
 
@@ -134,6 +141,7 @@ public class ProductService : IProductService
             Size            = v.Size,
             Color           = v.Color,
             SKU             = v.SKU,
+            Barcode         = v.Barcode,
             Stock           = v.Stock,
             PriceAdjustment = v.PriceAdjustment
         }).ToList(),

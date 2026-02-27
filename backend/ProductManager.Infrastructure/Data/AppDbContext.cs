@@ -69,6 +69,7 @@ public class AppDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.SKU).IsRequired().HasMaxLength(150);
+            e.Property(x => x.Barcode).HasMaxLength(100);
             e.Property(x => x.Size).HasMaxLength(50);
             e.Property(x => x.Color).HasMaxLength(50);
             e.Property(x => x.PriceAdjustment).HasColumnType("decimal(18,2)");

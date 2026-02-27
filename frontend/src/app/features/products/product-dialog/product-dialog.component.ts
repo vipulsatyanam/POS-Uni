@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
 import { ProductService } from '../../../core/services/product.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { Category, Product } from '../../../core/models/product.model';
+import { Category, Product, VariantBarcodeEntry } from '../../../core/models/product.model';
 
 @Component({
   selector: 'app-product-dialog',
@@ -251,7 +251,7 @@ import { Category, Product } from '../../../core/models/product.model';
               }
             </div>
 
-            <!-- ── Variant Preview ─────────────────────────────────── -->
+            <!-- ── Variant Preview + Barcodes ─────────────────────── -->
             @if (previewVariants().length > 0) {
               <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4">
                 <div class="flex items-center gap-2 mb-3">
@@ -260,16 +260,26 @@ import { Category, Product } from '../../../core/models/product.model';
                           d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
                   </svg>
                   <p class="text-xs font-semibold text-slate-600">
-                    {{ previewVariants().length }} variant{{ previewVariants().length !== 1 ? 's' : '' }} will be created
+                    {{ previewVariants().length }} variant{{ previewVariants().length !== 1 ? 's' : '' }}
+                    — set barcode per variant (optional)
                   </p>
                 </div>
-                <div class="flex flex-wrap gap-1.5">
-                  @for (v of previewVariants(); track v) {
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-md
-                                 bg-white border border-slate-200 text-slate-700
-                                 text-xs font-mono shadow-sm">
-                      {{ v }}
-                    </span>
+                <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  @for (v of previewVariants(); track v.sku) {
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center px-2 py-1 rounded-md
+                                   bg-white border border-slate-200 text-slate-700
+                                   text-xs font-mono shadow-sm shrink-0 min-w-[110px]">
+                        {{ v.sku }}
+                      </span>
+                      <input
+                        type="text"
+                        class="field-input !py-1 !text-xs font-mono flex-1"
+                        placeholder="Barcode (optional)"
+                        [value]="(variantBarcodes()[barcodeKey(v)] || '')"
+                        (input)="setVariantBarcode(barcodeKey(v), $any($event.target).value)"
+                      />
+                    </div>
                   }
                 </div>
               </div>
@@ -335,17 +345,26 @@ export class ProductDialogComponent implements OnInit {
 
   isEdit = computed(() => !!this.editProduct());
 
-  // Real-time variant preview
+  // variant barcode map: key = `${size}|${color}`
+  variantBarcodes = signal<Record<string, string>>({});
+
+  // Real-time variant preview as objects
   previewVariants = computed(() => {
     const s = this.sizes();
     const c = this.colors();
     const sku = (this.form?.value?.sku ?? 'SKU').toUpperCase().replace(/\s+/g, '-');
     if (s.length === 0 && c.length === 0) return [];
+    const build = (sz?: string, cl?: string) => ({
+      sku: [sku, sz?.toUpperCase(), cl?.toUpperCase().replace(/\s+/g, '-')]
+             .filter(Boolean).join('-'),
+      size: sz,
+      color: cl
+    });
     if (s.length > 0 && c.length > 0)
-      return s.flatMap(sz => c.map(cl => `${sku}-${sz.toUpperCase()}-${cl.toUpperCase().replace(/\s+/g, '-')}`));
+      return s.flatMap(sz => c.map(cl => build(sz, cl)));
     if (s.length > 0)
-      return s.map(sz => `${sku}-${sz.toUpperCase()}`);
-    return c.map(cl => `${sku}-${cl.toUpperCase().replace(/\s+/g, '-')}`);
+      return s.map(sz => build(sz, undefined));
+    return c.map(cl => build(undefined, cl));
   });
 
   ngOnInit() {
@@ -362,6 +381,12 @@ export class ProductDialogComponent implements OnInit {
     if (p) {
       this.sizes.set([...p.sizes]);
       this.colors.set([...p.colors]);
+      const bc: Record<string, string> = {};
+      p.variants.forEach(v => {
+        const key = `${v.size ?? ''}|${v.color ?? ''}`;
+        if (v.barcode) bc[key] = v.barcode;
+      });
+      this.variantBarcodes.set(bc);
     }
 
     this.categorySvc.getAll().subscribe(cats => this.categories.set(cats));
@@ -370,20 +395,32 @@ export class ProductDialogComponent implements OnInit {
   // ── Tag management ────────────────────────────────────────────────────────
 
   addSize() {
-    const v = this.sizeInput.value?.trim();
-    if (v && !this.sizes().includes(v)) this.sizes.update(s => [...s, v]);
+    const raw = this.sizeInput.value?.trim();
+    if (!raw) return;
+    const parts = raw.split(',').map(s => s.trim()).filter(s => s && !this.sizes().includes(s));
+    if (parts.length) this.sizes.update(arr => [...arr, ...parts]);
     this.sizeInput.setValue('');
   }
 
   removeSize(s: string) { this.sizes.update(arr => arr.filter(x => x !== s)); }
 
   addColor() {
-    const v = this.colorInput.value?.trim();
-    if (v && !this.colors().includes(v)) this.colors.update(c => [...c, v]);
+    const raw = this.colorInput.value?.trim();
+    if (!raw) return;
+    const parts = raw.split(',').map(c => c.trim()).filter(c => c && !this.colors().includes(c));
+    if (parts.length) this.colors.update(arr => [...arr, ...parts]);
     this.colorInput.setValue('');
   }
 
   removeColor(c: string) { this.colors.update(arr => arr.filter(x => x !== c)); }
+
+  barcodeKey(v: { size?: string; color?: string }) {
+    return `${v.size ?? ''}|${v.color ?? ''}`;
+  }
+
+  setVariantBarcode(key: string, value: string) {
+    this.variantBarcodes.update(m => ({ ...m, [key]: value }));
+  }
 
   // ── Submit ────────────────────────────────────────────────────────────────
 
@@ -406,12 +443,21 @@ export class ProductDialogComponent implements OnInit {
   }
 
   private createOrUpdateProduct(imageUrl: string) {
+    const bcMap = this.variantBarcodes();
+    const variantBarcodes: VariantBarcodeEntry[] = Object.entries(bcMap)
+      .filter(([, barcode]) => barcode?.trim())
+      .map(([key, barcode]) => {
+        const [size, color] = key.split('|');
+        return { size: size || undefined, color: color || undefined, barcode };
+      });
+
     const payload = {
       ...this.form.value,
-      sku:      this.form.value.sku.toUpperCase(),
-      imageUrl: imageUrl,
-      sizes:    this.sizes(),
-      colors:   this.colors()
+      sku:            this.form.value.sku.toUpperCase(),
+      imageUrl:       imageUrl,
+      sizes:          this.sizes(),
+      colors:         this.colors(),
+      variantBarcodes
     };
 
     const req$ = this.isEdit()

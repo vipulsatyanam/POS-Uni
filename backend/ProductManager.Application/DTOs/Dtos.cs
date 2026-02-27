@@ -27,8 +27,16 @@ public class ProductVariantDto
     public string? Size { get; set; }
     public string? Color { get; set; }
     public string SKU { get; set; } = string.Empty;
+    public string? Barcode { get; set; }
     public int Stock { get; set; }
     public decimal? PriceAdjustment { get; set; }
+}
+
+public class VariantBarcodeDto
+{
+    public string? Size { get; set; }
+    public string? Color { get; set; }
+    public string? Barcode { get; set; }
 }
 
 public class ProductDto
@@ -65,6 +73,7 @@ public class CreateProductDto
     public int? CategoryId { get; set; }
     public List<string> Sizes { get; set; } = new();
     public List<string> Colors { get; set; } = new();
+    public List<VariantBarcodeDto> VariantBarcodes { get; set; } = new();
 }
 
 public class UpdateProductDto : CreateProductDto { }

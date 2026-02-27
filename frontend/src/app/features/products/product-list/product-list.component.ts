@@ -463,8 +463,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
     });
   }
 
-  variantLabel(v: { size?: string; color?: string }) {
-    return [v.size, v.color].filter(Boolean).join('-');
+  variantLabel(v: { size?: string; color?: string; sku: string }) {
+    return v.sku;
   }
 
   resolveImageUrl(url?: string): string {
@@ -478,5 +478,5 @@ export class ProductListComponent implements OnInit, OnDestroy {
 }
 
 function variantLabel(v: ProductVariant): string {
-  return [v.size, v.color].filter(Boolean).join(' · ') || v.sku;
+  return v.sku;
 }

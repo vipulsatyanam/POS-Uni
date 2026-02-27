@@ -44,21 +44,51 @@ public class ProductRepository : Repository<Product>, IProductRepository
     // Override UpdateAsync to handle child collection replacement
     public async Task UpdateAsync(Product entity)
     {
-        var existing = await WithDetails().FirstOrDefaultAsync(p => p.Id == entity.Id);
-        if (existing is null) return;
+        // 1. Snapshot new child data as fresh (untracked) objects before touching the change tracker
+        var newSizes = entity.Sizes.Select(s => new ProductSize
+        {
+            Size      = s.Size,
+            ProductId = entity.Id
+        }).ToList();
 
-        // Remove old children
-        _db.Set<ProductSize>().RemoveRange(existing.Sizes);
-        _db.Set<ProductColor>().RemoveRange(existing.Colors);
-        _db.Set<ProductVariant>().RemoveRange(existing.Variants);
+        var newColors = entity.Colors.Select(c => new ProductColor
+        {
+            Color     = c.Color,
+            ProductId = entity.Id
+        }).ToList();
 
-        // Apply scalar changes
-        _db.Entry(existing).CurrentValues.SetValues(entity);
+        var newVariants = entity.Variants.Select(v => new ProductVariant
+        {
+            Size            = v.Size,
+            Color           = v.Color,
+            SKU             = v.SKU,
+            Barcode         = v.Barcode,
+            Stock           = v.Stock,
+            PriceAdjustment = v.PriceAdjustment,
+            ProductId       = entity.Id
+        }).ToList();
 
-        // Add new children
-        foreach (var s in entity.Sizes)   { s.ProductId = entity.Id; existing.Sizes.Add(s); }
-        foreach (var c in entity.Colors)  { c.ProductId = entity.Id; existing.Colors.Add(c); }
-        foreach (var v in entity.Variants) { v.ProductId = entity.Id; existing.Variants.Add(v); }
+        // 2. Detach everything — clean slate so no temporary-Id conflicts
+        foreach (var entry in _db.ChangeTracker.Entries().ToList())
+            entry.State = EntityState.Detached;
+
+        // 3. Bulk-delete old children directly via SQL (bypasses change tracker entirely)
+        await _db.Set<ProductSize>()   .Where(s => s.ProductId == entity.Id).ExecuteDeleteAsync();
+        await _db.Set<ProductColor>()  .Where(c => c.ProductId == entity.Id).ExecuteDeleteAsync();
+        await _db.Set<ProductVariant>().Where(v => v.ProductId == entity.Id).ExecuteDeleteAsync();
+
+        // 4. Clear nav collections before re-attaching so EF doesn't auto-insert them again
+        entity.Sizes    = [];
+        entity.Colors   = [];
+        entity.Variants = [];
+
+        // 5. Re-attach entity and mark scalar fields as modified
+        _db.Entry(entity).State = EntityState.Modified;
+
+        // 6. Add new children
+        await _db.Set<ProductSize>()   .AddRangeAsync(newSizes);
+        await _db.Set<ProductColor>()  .AddRangeAsync(newColors);
+        await _db.Set<ProductVariant>().AddRangeAsync(newVariants);
 
         await _db.SaveChangesAsync();
     }
