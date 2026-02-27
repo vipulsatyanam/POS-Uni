@@ -1,0 +1,43 @@
+# ── .NET / C# ─────────────────────────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+*.DS_Store
+*.log
+TestResults/
+
+# Secrets / config overrides
+appsettings.Development.json
+appsettings.Local.json
+*.pfx
+*.p12
+secrets.json
+
+# Entity Framework migrations (keep source, ignore compiled)
+# Uncomment if you want to exclude migrations:
+# **/Migrations/
+
+# ── Angular / Node ────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.env
+
+# ── Database ──────────────────────────────────────────────────────────
+*.mdf
+*.ldf
+*.bak
+
+# ── Uploads (runtime content, not source) ────────────────────────────
+backend/ProductManager.API/Uploads/
+backend/ProductManager.API/wwwroot/uploads/
+
+# ── OS / Editor ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/settings.json
+.idea/

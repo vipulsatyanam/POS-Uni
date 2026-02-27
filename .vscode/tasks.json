@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"ProductManager.API/ProductManager.API.csproj"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"reveal": "silent"
+			}
+		}
+	]
+}
