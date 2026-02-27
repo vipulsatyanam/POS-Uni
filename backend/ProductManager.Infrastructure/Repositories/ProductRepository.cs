@@ -91,5 +91,11 @@ public class ProductRepository : Repository<Product>, IProductRepository
         await _db.Set<ProductVariant>().AddRangeAsync(newVariants);
 
         await _db.SaveChangesAsync();
+
+        // Restore saved collections (with DB-assigned IDs) back onto entity
+        // so callers can build DTOs without a second DB round-trip
+        entity.Sizes    = newSizes;
+        entity.Colors   = newColors;
+        entity.Variants = newVariants;
     }
 }
