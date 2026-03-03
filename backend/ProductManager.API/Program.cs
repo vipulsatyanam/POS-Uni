@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using ProductManager.Application.Interfaces;
 using ProductManager.Application.Services;
 using ProductManager.Infrastructure.Data;
@@ -6,27 +7,52 @@ using ProductManager.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// -----------------------------------------------------
+// Services
+// -----------------------------------------------------
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c => c.SwaggerDoc("v1", new() { Title = "ProductManager API", Version = "v1" }));
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new()
+    {
+        Title = "ProductManager API",
+        Version = "v1"
+    });
+});
 
 // EF Core + SQL Server
-builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlServer(
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sql => sql.MigrationsAssembly("ProductManager.Infrastructure")));
+        sql => sql.MigrationsAssembly("ProductManager.Infrastructure")
+    ));
 
-// DI registrations
+// Dependency Injection
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 
-// CORS for Angular dev server
-builder.Services.AddCors(opt => opt.AddPolicy("Angular", p =>
-    p.WithOrigins("http://localhost:4200", "http://localhost:60542").AllowAnyMethod().AllowAnyHeader()));
+// CORS Configuration (Allow Angular Frontend)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AngularPolicy", policy =>
+    {
+        policy.WithOrigins("https://posdev.uniformaus.com.au")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+        // .AllowCredentials(); // Uncomment if using authentication cookies
+    });
+});
 
 var app = builder.Build();
+
+// -----------------------------------------------------
+// Middleware Pipeline
+// -----------------------------------------------------
 
 if (app.Environment.IsDevelopment())
 {
@@ -34,24 +60,32 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("Angular");
+app.UseRouting();
 
-// Serve static files from Uploads directory
+// CORS must be after UseRouting and before endpoints
+app.UseCors("AngularPolicy");
+
+app.UseAuthorization();
+
+// Serve static files from Uploads folder
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
+
 if (!Directory.Exists(uploadsPath))
+{
     Directory.CreateDirectory(uploadsPath);
+}
 
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = "/uploads"
 });
 
-app.UseAuthorization();
 app.MapControllers();
+
 app.MapGet("/", () => "API is running...");
 
-// Auto-migrate on startup (dev convenience)
+// Auto-migrate database on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
