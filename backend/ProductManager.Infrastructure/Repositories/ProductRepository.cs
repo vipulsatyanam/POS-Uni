@@ -26,6 +26,8 @@ public class ProductRepository : Repository<Product>, IProductRepository
             q = q.Where(p =>
                 p.Name.ToLower().Contains(t) ||
                 p.SKU.ToLower().Contains(t) ||
+            (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(t)) ||
+            p.Variants.Any(x => !string.IsNullOrEmpty(x.Barcode) && x.Barcode.ToLower().Contains(t)) ||
                 (p.Category != null && p.Category.Name.ToLower().Contains(t)));
         }
         return await q.OrderByDescending(p => p.CreatedAt).ToListAsync();
