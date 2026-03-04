@@ -41,7 +41,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularPolicy", policy =>
     {
-        policy.WithOrigins("https://posdev.uniformaus.com.au")
+        policy.WithOrigins("https://posdev.uniformaus.com.au", "http://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod();
         // .AllowCredentials(); // Uncomment if using authentication cookies
