@@ -19,10 +19,10 @@ import { Category, Product, VariantBarcodeEntry } from '../../../core/models/pro
     <div class="modal-backdrop" (click)="onBackdropClick($event)">
 
       <!-- Panel -->
-      <div class="modal-panel mx-4" (click)="$event.stopPropagation()">
+      <div class="modal-panel mx-2 sm:mx-4" (click)="$event.stopPropagation()">
 
         <!-- ── Header ─────────────────────────────────────────────── -->
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+        <div class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 shrink-0">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center">
               <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,11 +51,11 @@ import { Category, Product, VariantBarcodeEntry } from '../../../core/models/pro
         </div>
 
         <!-- ── Body (scrollable) ──────────────────────────────────── -->
-        <div class="overflow-y-auto flex-1 px-6 py-5">
+        <div class="overflow-y-auto flex-1 px-4 sm:px-6 py-5">
           <form [formGroup]="form" class="space-y-5">
 
             <!-- Row 1: Name + SKU -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="field-label">Product Name <span class="text-red-500">*</span></label>
                 <input formControlName="name" type="text" class="field-input"
@@ -77,7 +77,7 @@ import { Category, Product, VariantBarcodeEntry } from '../../../core/models/pro
             </div>
 
             <!-- Row 2: Barcode + Price -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="field-label">Barcode</label>
                 <input formControlName="barcode" type="text" class="field-input font-mono"
@@ -98,7 +98,7 @@ import { Category, Product, VariantBarcodeEntry } from '../../../core/models/pro
             </div>
 
             <!-- Row 3: Category + Image Upload -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="field-label">Category</label>
                 <select formControlName="categoryId" class="field-input">
@@ -289,7 +289,7 @@ import { Category, Product, VariantBarcodeEntry } from '../../../core/models/pro
         </div>
 
         <!-- ── Footer ─────────────────────────────────────────────── -->
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
+        <div class="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
           <button class="btn-secondary" (click)="cancelled.emit()" [disabled]="saving()">
             Cancel
           </button>

@@ -58,4 +58,8 @@ export interface CartItem {
   productImageUrl?: string;
   variant: ProductVariant;
   quantity: number;
+  note?: string;
+  discountType?: 'percentage' | 'fixed';
+  discountValue?: number;
+  discountDescription?: string;
 }
