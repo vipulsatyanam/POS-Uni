@@ -20,9 +20,9 @@ import { ProductListEventBus } from '../../../layout/header/header.component';
     <div class="max-w-7xl mx-auto space-y-4">
 
       <!-- Page controls -->
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
         <!-- Search -->
-        <div class="relative flex-1 max-w-xs">
+        <div class="relative w-full sm:flex-1 sm:max-w-xs">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
                fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -46,7 +46,7 @@ import { ProductListEventBus } from '../../../layout/header/header.component';
           }
         </div>
 
-        <div class="flex-1"></div>
+        <div class="hidden sm:block flex-1"></div>
 
         <!-- Stats chips -->
         <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500">
@@ -62,7 +62,7 @@ import { ProductListEventBus } from '../../../layout/header/header.component';
         </div>
 
         <!-- Add button (also triggered from header) -->
-        <button class="btn-primary" (click)="openDialog()">
+        <button class="btn-primary w-full sm:w-auto justify-center" (click)="openDialog()">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 5v14M5 12h14"/>
           </svg>
@@ -217,7 +217,7 @@ import { ProductListEventBus } from '../../../layout/header/header.component';
           </div>
 
           <!-- Footer -->
-          <div class="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div class="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-1">
             <p class="text-xs text-slate-400">
               Showing {{ products().length }} of {{ products().length }} product{{ products().length !== 1 ? 's' : '' }}
             </p>

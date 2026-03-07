@@ -10,8 +10,16 @@ export class CartService {
   count = computed(() => this.items().reduce((sum, i) => sum + i.quantity, 0));
 
   total = computed(() =>
-    this.items().reduce((sum, i) =>
-      sum + (i.productPrice + (i.variant.priceAdjustment ?? 0)) * i.quantity, 0)
+    this.items().reduce((sum, i) => {
+      const linePrice = (i.productPrice + (i.variant.priceAdjustment ?? 0)) * i.quantity;
+      let discount = 0;
+      if (i.discountType === 'percentage' && i.discountValue) {
+        discount = linePrice * (i.discountValue / 100);
+      } else if (i.discountType === 'fixed' && i.discountValue) {
+        discount = i.discountValue;
+      }
+      return sum + linePrice - discount;
+    }, 0)
   );
 
   add(product: Product, variant: ProductVariant, quantity = 1): void {
@@ -40,6 +48,23 @@ export class CartService {
   setQuantity(id: string, quantity: number): void {
     if (quantity <= 0) { this.remove(id); return; }
     this.items.update(list => list.map(i => i.id === id ? { ...i, quantity } : i));
+    this.persist();
+  }
+
+  setItemNote(id: string, note: string): void {
+    this.items.update(list => list.map(i => i.id === id ? { ...i, note } : i));
+    this.persist();
+  }
+
+  setItemDiscount(id: string, discountType: 'percentage' | 'fixed', discountValue: number, discountDescription?: string): void {
+    this.items.update(list => list.map(i => i.id === id ? { ...i, discountType, discountValue, discountDescription } : i));
+    this.persist();
+  }
+
+  removeItemDiscount(id: string): void {
+    this.items.update(list => list.map(i => i.id === id
+      ? { ...i, discountType: undefined, discountValue: undefined, discountDescription: undefined }
+      : i));
     this.persist();
   }
 

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, output } from '@angular/core';
 import { Router, NavigationEnd, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
@@ -12,10 +12,21 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <header class="h-14 bg-white border-b border-slate-200 flex items-center px-6 gap-4 shrink-0">
+    <header class="h-14 bg-white border-b border-slate-200 flex items-center px-4 lg:px-6 gap-3 lg:gap-4 shrink-0">
+
+      <!-- Hamburger (mobile only) -->
+      <button
+        class="lg:hidden btn-icon shrink-0"
+        (click)="menuToggle.emit()"
+        aria-label="Open navigation menu"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
 
       <!-- Breadcrumb / title -->
-      <div class="flex-1">
+      <div class="flex-1 min-w-0">
         <h1 class="text-[15px] font-semibold text-slate-800">{{ pageTitle() }}</h1>
         <p class="text-xs text-slate-400">{{ pageSubtitle() }}</p>
       </div>
@@ -170,6 +181,8 @@ import { environment } from '../../../environments/environment';
   `
 })
 export class HeaderComponent {
+  menuToggle = output<void>();
+
   private router = inject(Router);
   cartSvc = inject(CartService);
 

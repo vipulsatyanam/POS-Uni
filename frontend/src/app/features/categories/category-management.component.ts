@@ -26,7 +26,7 @@ import { Category } from '../../core/models/product.model';
       <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
         <h2 class="text-lg font-semibold text-slate-900 mb-4">Add New Category</h2>
         <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="field-label">Category Name <span class="text-red-500">*</span></label>
               <input
@@ -92,8 +92,8 @@ import { Category } from '../../core/models/product.model';
         } @else {
           <div class="divide-y divide-slate-100">
             @for (cat of categories(); track cat.id) {
-              <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
-                <div class="flex-1">
+              <div class="p-4 flex items-start sm:items-center justify-between gap-3 hover:bg-slate-50 transition">
+                <div class="flex-1 min-w-0">
                   <p class="font-semibold text-slate-900">{{ cat.name }}</p>
                   @if (cat.description) {
                     <p class="text-sm text-slate-500 mt-1">{{ cat.description }}</p>
@@ -130,7 +130,6 @@ import { Category } from '../../core/models/product.model';
   styles: [`
     :host {
       display: block;
-      padding: 2rem;
     }
 
     .spinner {
