@@ -320,9 +320,9 @@ import { environment } from '../../../environments/environment';
         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         (click)="cancelVariantPick()"
       >
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" (click)="$event.stopPropagation()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6" (click)="$event.stopPropagation()">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Select Size</h2>
+            <h2 class="text-base font-semibold text-slate-900">Select Size</h2>
             <button
               class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
               (click)="cancelVariantPick()"
@@ -332,11 +332,11 @@ import { environment } from '../../../environments/environment';
               </svg>
             </button>
           </div>
-          <div class="h-px bg-slate-100 my-4"></div>
-          <div class="grid grid-cols-3 gap-3">
+          <div class="h-px bg-slate-100 my-2"></div>
+          <div class="grid grid-cols-3 gap-x-3 gap-y-2">
             @for (size of availableSizes(); track size) {
               <button
-                class="py-6 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-base transition-all"
+                class="py-6 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-sm transition-all"
                 (click)="selectSize(size)"
               >{{ size }}</button>
             }
@@ -351,9 +351,9 @@ import { environment } from '../../../environments/environment';
         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         (click)="cancelVariantPick()"
       >
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" (click)="$event.stopPropagation()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6" (click)="$event.stopPropagation()">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Select Colour</h2>
+            <h2 class="text-base font-semibold text-slate-900">Select Colour</h2>
             <button
               class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
               (click)="cancelVariantPick()"
@@ -363,11 +363,11 @@ import { environment } from '../../../environments/environment';
               </svg>
             </button>
           </div>
-          <div class="h-px bg-slate-100 my-4"></div>
-          <div class="grid grid-cols-3 gap-3">
+          <div class="h-px bg-slate-100 my-2"></div>
+          <div class="grid grid-cols-3 gap-x-3 gap-y-2">
             @for (color of availableColors(); track color) {
               <button
-                class="py-6 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-base transition-all"
+                class="py-6 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-sm transition-all"
                 (click)="selectColor(color)"
               >{{ color }}</button>
             }
