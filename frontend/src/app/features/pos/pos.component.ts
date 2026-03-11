@@ -21,90 +21,102 @@ import { environment } from '../../../environments/environment';
       <div class="flex-1 flex flex-col min-w-0 bg-white rounded-xl border border-slate-200 shadow-card">
 
         <!-- Search input -->
-        <div class="px-4 py-4 relative" style="z-index:40">
-          <div class="relative">
-            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
-            </svg>
+        <div class="px-4 py-4">
+          <div class="relative" style="z-index:40">
+            <div class="absolute inset-y-0 left-0 flex items-center pointer-events-none z-20 pl-3.5">
+              <svg class="shrink-0 w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.3-4.3"/>
+              </svg>
+            </div>
             <input
               [formControl]="searchCtrl"
               type="text"
+              role="combobox"
+              aria-expanded="true"
               autocomplete="off"
               placeholder="Search products or start scanning"
-              class="w-full pl-12 pr-10 py-3.5 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:outline-none text-sm transition-colors"
+              class="py-4 pl-10 pr-4 block w-full border-gray-400 border rounded-lg sm:text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
               (focus)="dropdownOpen.set(true)"
               (keydown.escape)="dropdownOpen.set(false)"
             />
             @if (searchCtrl.value) {
               <button
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 (click)="searchCtrl.setValue('')"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
             }
-          </div>
 
-          <!-- Backdrop -->
-          @if (dropdownOpen()) {
-            <div class="fixed inset-0" style="z-index:38" (click)="dropdownOpen.set(false)"></div>
-          }
+            <!-- Backdrop -->
+            @if (dropdownOpen()) {
+              <div class="fixed inset-0" style="z-index:38" (click)="dropdownOpen.set(false)"></div>
+            }
 
-          <!-- Dropdown panel -->
-          @if (dropdownOpen()) {
-            <div
-              class="absolute left-4 right-4 top-full mt-1 bg-white rounded-xl border border-slate-200 overflow-y-auto"
-              style="z-index:39; max-height:65vh; box-shadow:0 20px 60px -10px rgba(0,0,0,0.18)"
-            >
+            <!-- Dropdown panel -->
+            @if (dropdownOpen()) {
+              <div
+                class="absolute left-0 right-0 top-full bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                style="z-index:39; max-height:24rem; margin-top:5px"
+              >
               @if (loading()) {
-                <div class="flex items-center justify-center gap-2 py-10 text-slate-400">
+                <div class="flex items-center justify-center gap-2 py-10 text-gray-400">
                   <div class="spinner"></div>
                   <span class="text-sm">Loading products…</span>
                 </div>
               } @else if (groupedProducts().length === 0) {
-                <div class="py-10 text-center text-sm text-slate-400">
+                <div class="py-10 text-center text-sm text-gray-400">
                   {{ searchCtrl.value ? 'No results found' : 'No products yet' }}
                 </div>
               } @else {
                 @for (group of groupedProducts(); track group.category) {
-                  <div class="px-4 py-2 text-[10px] font-bold tracking-widest uppercase text-slate-400 bg-slate-50 border-b border-slate-100 sticky top-0">
+                  <div class="text-xs uppercase text-gray-500 mx-3 mt-3 mb-1">
                     {{ group.category }}
                   </div>
                   @for (product of group.items; track product.id) {
                     <button
-                      class="w-full flex items-center gap-3 px-4 py-3 hover:bg-brand-50 text-left border-b border-slate-50 last:border-0 transition-colors"
+                      class="flex items-center justify-between cursor-pointer py-2 px-4 w-full text-sm text-gray-800 hover:bg-gray-100 text-left transition-colors"
                       (mousedown)="pickProduct(product)"
                     >
-                      @if (product.imageUrl) {
-                        <img
-                          [src]="resolveImageUrl(product.imageUrl)"
-                          [alt]="product.name"
-                          class="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0"
-                        />
-                      } @else {
-                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                          <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5"/>
-                            <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5"/>
-                            <polyline points="21 15 16 10 5 21" stroke-width="1.5"/>
-                          </svg>
+                      <div class="flex items-center gap-x-3">
+                        <div class="flex items-center justify-center rounded-full bg-gray-200 size-8 overflow-hidden shrink-0">
+                          @if (product.imageUrl) {
+                            <img
+                              [src]="resolveImageUrl(product.imageUrl)"
+                              [alt]="product.name"
+                              class="shrink-0 w-full h-full object-cover"
+                            />
+                          } @else {
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5"/>
+                              <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5"/>
+                              <polyline points="21 15 16 10 5 21" stroke-width="1.5"/>
+                            </svg>
+                          }
                         </div>
-                      }
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-slate-900 truncate">{{ product.name }}</p>
-                        <p class="text-xs font-mono text-slate-400">{{ product.sku }}</p>
+                        <div>
+                          <div class="font-medium text-gray-800 leading-tight">{{ product.name }}</div>
+                          <div class="text-xs text-gray-500 dark:text-neutral-400">{{ product.sku }}</div>
+                        </div>
                       </div>
-                      <span class="text-sm font-bold text-slate-600 shrink-0">{{ product.price | currency }}</span>
+                      <div class="flex items-center gap-x-3">
+                        <span class="font-semibold text-gray-800">{{ product.price | currency }}</span>
+                        @if (isInCart(product.id)) {
+                          <svg class="shrink-0 size-3.5 text-blue-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        }
+                      </div>
                     </button>
                   }
                 }
               }
-            </div>
-          }
+              </div>
+            }
+          </div>
         </div>
 
         <!-- Empty state -->
@@ -121,296 +133,363 @@ import { environment } from '../../../environments/environment';
       </div>
 
       <!-- ── RIGHT: Cart Panel ───────────────────────────────────────────── -->
-      <div class="w-full h-64 sm:h-72 lg:h-auto lg:w-80 shrink-0 flex flex-col bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+      <div class="w-full h-64 sm:h-72 lg:h-auto lg:w-[420px] shrink-0 flex flex-col">
 
-        <!-- Add Customer button -->
-        <button class="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 bg-white hover:bg-slate-50 transition-colors text-left w-full shrink-0">
-          <span class="w-7 h-7 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 5v14M5 12h14"/>
-            </svg>
-          </span>
-          <span class="text-sm text-slate-400 font-medium">Add Customer</span>
-        </button>
+        <!-- White card: Customer + Items + ADD row -->
+        <div class="flex flex-col px-5 pt-4 border bg-white border-gray-200 rounded-xl shadow-xs flex-1 overflow-hidden">
 
-        <!-- Items list (accordion) -->
-        <div class="flex-1 overflow-y-auto bg-slate-50/60">
-          @if (cartSvc.items().length === 0) {
-            <div class="flex flex-col items-center justify-center h-full py-12 text-slate-400">
-              <svg class="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+          <!-- Add Customer (input with filled person icon) -->
+          <div class="relative mb-5">
+            <div class="absolute inset-y-0 left-0 flex items-center pointer-events-none z-20 pl-3.5">
+              <svg class="shrink-0 w-6 h-6 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                <path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/>
               </svg>
-              <p class="text-sm font-medium text-slate-500">No items added yet</p>
-              <p class="text-xs mt-1">Search and select a product to add</p>
             </div>
-          } @else {
-            @for (item of cartSvc.items(); track item.id) {
-              <div class="bg-white border-b border-slate-100">
+            <input
+              type="text"
+              placeholder="Add Customer"
+              class="py-4 pl-10 pr-4 block w-full border border-gray-400 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
+            />
+          </div>
 
-                <!-- Accordion header (always visible) -->
-                <div
-                  class="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none hover:bg-slate-50 transition-colors"
-                  (click)="toggleCartItem(item.id)"
-                >
-                  <!-- Chevron -->
-                  <svg
-                    class="w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200"
-                    [class.rotate-90]="expandedCartItemId() === item.id"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          <!-- Items list (scrollable) -->
+          <div class="flex-1 overflow-y-auto -mx-5">
+            @if (cartSvc.items().length === 0) {
+              <div class="flex flex-col items-center justify-center h-full py-12 text-gray-400">
+                <svg class="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <p class="text-sm font-medium text-gray-500">No items added yet</p>
+                <p class="text-xs mt-1 text-gray-400">Search and select a product to add</p>
+              </div>
+            } @else {
+              @for (item of cartSvc.items(); track item.id) {
+                <div class="border-b border-gray-200 py-3 px-5 hover:bg-gray-50 transition-colors">
+
+                  <!-- Accordion header -->
+                  <div
+                    class="flex items-center gap-2 cursor-pointer select-none"
+                    (click)="toggleCartItem(item.id)"
                   >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
-                  </svg>
+                    <!-- Chevron -->
+                    <button class="shrink-0 text-gray-300 hover:text-blue-500 transition-colors pointer-events-none" title="Edit">
+                      <svg
+                        class="w-6 h-6"
+                        [style.transform]="expandedCartItemId() === item.id ? 'rotate(90deg)' : 'rotate(0deg)'"
+                        style="transition: transform 0.2s"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                      </svg>
+                    </button>
 
-                  <!-- Qty badge -->
-                  <span class="min-w-[1.25rem] h-5 px-1 rounded-full bg-brand-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                    {{ item.quantity }}
-                  </span>
+                    <!-- Qty -->
+                    <span class="text-xl font-semibold text-gray-700 w-8 text-center shrink-0">{{ item.quantity }}</span>
 
-                  <!-- Name + variant -->
-                  <div class="flex-1 min-w-0">
-                    <p class="text-xs font-semibold text-slate-800 truncate">{{ item.productName }}</p>
-                    @if (item.variant.size || item.variant.color) {
-                      <p class="text-[10px] text-slate-400 truncate">
-                        {{ item.variant.size }}{{ item.variant.size && item.variant.color ? ' / ' : '' }}{{ item.variant.color }}
+                    <!-- Name + SKU/variant -->
+                    <div class="flex-1 min-w-0">
+                      <h3 class="text-base font-semibold text-gray-800 truncate leading-tight">{{ item.productName }}</h3>
+                      <p class="text-sm text-gray-500 truncate mt-0.5">
+                        {{ item.productSku }}{{ item.variant.size ? ' · ' + item.variant.size : '' }}{{ item.variant.color ? ' · ' + item.variant.color : '' }}
                       </p>
-                    }
-                  </div>
+                    </div>
 
-                  <!-- Line total (original price, not discounted) -->
-                  <span class="text-sm font-semibold text-slate-700 shrink-0">
-                    {{ getItemBasePrice(item) * item.quantity | currency }}
-                  </span>
+                    <!-- Line total -->
+                    <span class="text-xl font-semibold text-gray-800 shrink-0">{{ getItemBasePrice(item) * item.quantity | currency }}</span>
 
-                  <!-- Trash -->
-                  <button
-                    class="text-slate-300 hover:text-red-500 transition-colors shrink-0 ml-0.5"
-                    (click)="$event.stopPropagation(); cartSvc.remove(item.id)"
-                    title="Remove"
-                  >
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  </button>
-                </div>
-
-                <!-- Discount sub-row (always visible when discount applied) -->
-                @if (item.discountType && item.discountValue) {
-                  <div class="flex items-center gap-1.5 px-3 pb-1 pl-9">
-                    <span class="text-xs font-semibold text-slate-700">
-                      Discount {{ getItemDiscount(item) | currency }}
-                    </span>
-                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded tracking-wide">DISCOUNT</span>
-                    <span class="text-xs font-semibold text-emerald-700 ml-auto shrink-0">-{{ getItemDiscount(item) | currency }}</span>
+                    <!-- Trash (filled icon) -->
                     <button
-                      class="text-slate-300 hover:text-red-500 transition-colors shrink-0"
-                      (click)="cartSvc.removeItemDiscount(item.id)"
-                      title="Remove discount"
+                      class="shrink-0 text-gray-500 hover:text-red-700 transition-colors"
+                      (click)="$event.stopPropagation(); cartSvc.remove(item.id)"
                     >
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                      <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
                       </svg>
                     </button>
                   </div>
-                  <div class="px-9 pb-2 text-[10px] text-slate-400">
-                    Type: {{ item.discountType === 'percentage' ? item.discountValue + '%' : 'Fixed Amount' }}
-                  </div>
-                }
 
-                <!-- Expanded body -->
-                @if (expandedCartItemId() === item.id) {
-                  <div class="px-3 pb-3 pt-3 border-t border-slate-100 bg-slate-50/40">
+                  <!-- Expanded body -->
+                  @if (expandedCartItemId() === item.id) {
+                    <div class="mt-4 pt-4 border-t border-gray-100">
 
-                    <!-- 3-column grid: Quantity | Price | Discount(%) -->
-                    <div class="grid grid-cols-3 gap-2 mb-3">
+                      <!-- 3-column grid: Quantity | Price | Discount(%) -->
+                      <div class="grid grid-cols-3 gap-3 mb-4">
 
-                      <!-- Quantity -->
-                      <div>
-                        <span class="text-[11px] text-slate-500 mb-1 block">Quantity</span>
-                        <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white h-9">
-                          <button
-                            class="w-7 flex-shrink-0 h-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors text-base leading-none"
-                            (click)="cartSvc.setQuantity(item.id, item.quantity - 1)"
-                          >−</button>
-                          <span class="flex-1 text-center text-sm font-semibold text-slate-700 select-none">{{ item.quantity }}</span>
-                          <button
-                            class="w-7 flex-shrink-0 h-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors text-base leading-none"
-                            (click)="cartSvc.setQuantity(item.id, item.quantity + 1)"
-                          >+</button>
+                        <!-- Quantity -->
+                        <div>
+                          <label class="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            class="w-full px-3 py-3 text-base rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500 transition-colors"
+                            [value]="item.quantity"
+                            (change)="cartSvc.setQuantity(item.id, +$any($event.target).value)"
+                          />
+                        </div>
+
+                        <!-- Price -->
+                        <div>
+                          <label class="block text-sm font-semibold text-gray-700 mb-2">Price</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            readonly
+                            class="w-full px-3 py-3 text-base rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500 transition-colors"
+                            [value]="(item.productPrice + (item.variant.priceAdjustment ?? 0)).toFixed(2)"
+                          />
+                        </div>
+
+                        <!-- Discount % -->
+                        <div>
+                          <label class="block text-sm font-semibold text-gray-700 mb-2">Discount (%)</label>
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="100"
+                            class="w-full px-3 py-3 text-base rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500 transition-colors"
+                            [value]="item.discountType === 'percentage' ? (item.discountValue ?? 0) : 0"
+                            (change)="applyInlineDiscount(item.id, $any($event.target).value)"
+                          />
                         </div>
                       </div>
 
-                      <!-- Price -->
-                      <div>
-                        <span class="text-[11px] text-slate-500 mb-1 block">Price</span>
-                        <div class="h-9 border border-slate-200 rounded-lg bg-white px-2 flex items-center text-sm font-medium text-slate-700">
-                          {{ (item.productPrice + (item.variant.priceAdjustment ?? 0)) | currency }}
-                        </div>
+                      <!-- Note -->
+                      <div class="mb-3">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Note</label>
+                        <textarea
+                          rows="2"
+                          placeholder="Enter a note about this product"
+                          class="w-full px-3 py-3 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                          [value]="item.note || ''"
+                          (change)="cartSvc.setItemNote(item.id, $any($event.target).value)"
+                        ></textarea>
                       </div>
 
-                      <!-- Discount % (inline editable) -->
-                      <div>
-                        <span class="text-[11px] text-slate-500 mb-1 block">Discount (%)</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          class="w-full h-9 border border-slate-200 rounded-lg bg-white px-2 text-sm text-slate-700 focus:outline-none focus:border-brand-400"
-                          [value]="item.discountType === 'percentage' ? (item.discountValue ?? 0) : 0"
-                          (change)="applyInlineDiscount(item.id, $any($event.target).value)"
-                        />
+                      <!-- Save label -->
+                      <div class="flex justify-between items-center pb-2">
+                        @if (item.discountType === 'percentage' && item.discountValue) {
+                          <p class="text-xs text-green-500 font-medium">Save {{ getItemDiscount(item) | currency }}</p>
+                        }
                       </div>
                     </div>
-
-                    <!-- Note -->
-                    <div>
-                      <span class="text-[11px] text-slate-500 mb-1 block">Note</span>
-                      <textarea
-                        class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 bg-white resize-none focus:outline-none focus:border-brand-300 transition-colors"
-                        rows="2"
-                        [value]="item.note || ''"
-                        (change)="cartSvc.setItemNote(item.id, $any($event.target).value)"
-                        placeholder="Enter a note about this product"
-                      ></textarea>
-                    </div>
-                  </div>
-                }
-              </div>
+                  }
+                </div>
+              }
             }
-          }
-        </div>
-
-        <!-- Bottom action bar -->
-        <div class="border-t border-slate-200 shrink-0">
+          </div>
 
           <!-- ADD | Discount | Promo Code | Note -->
-          <div class="flex items-center bg-white border-b border-slate-100">
-            <button class="flex-1 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 py-2.5 transition-colors">ADD</button>
-            <div class="w-px h-4 bg-slate-200"></div>
-            <button
-              class="flex-1 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 py-2.5 transition-colors"
-              (click)="openDiscountModal()"
-            >Discount</button>
-            <div class="w-px h-4 bg-slate-200"></div>
-            <button class="flex-1 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 py-2.5 transition-colors">Promo Code</button>
-            <div class="w-px h-4 bg-slate-200"></div>
-            <button class="flex-1 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 py-2.5 transition-colors">Note</button>
-          </div>
-
-          <!-- Tender button -->
-          <div class="px-3 py-3 bg-white">
-            <button
-              class="w-full py-3.5 bg-brand-600 hover:bg-brand-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              [disabled]="cartSvc.items().length === 0"
-              (click)="checkout()"
-            >
-              Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})
-              &nbsp;{{ cartSvc.total() | currency }}
-            </button>
+          <div class="flex flex-nowrap justify-between items-center pb-3 mt-5">
+            <h2 class="text-gray-800 font-bold text-sm">ADD</h2>
+            <div class="flex items-center gap-x-5">
+              <button
+                class="text-gray-500 font-normal text-sm cursor-pointer hover:text-gray-700 transition-colors"
+                (click)="openDiscountModal()"
+              >Discount</button>
+              <button class="text-gray-500 font-normal text-sm cursor-pointer hover:text-gray-700 transition-colors">Promo Code</button>
+              <button class="text-blue-500 font-normal text-sm cursor-pointer hover:text-blue-700 transition-colors">Note</button>
+            </div>
           </div>
         </div>
+
+        <!-- Tender button (outside white card) -->
+        <button
+          class="bg-blue-500 text-white px-4 py-6 rounded-md w-full hover:bg-blue-600 transition-colors mt-5 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          [disabled]="cartSvc.items().length === 0"
+          (click)="checkout()"
+        >
+          <span class="text-sm font-semibold">Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})</span>
+          <span class="text-sm font-semibold">{{ cartSvc.total() | currency }}</span>
+        </button>
       </div>
     </div>
 
-    <!-- ── Size Modal ────────────────────────────────────────────────────── -->
-    @if (pickStep() === 'size') {
+    <!-- ── Variant Selection Modal (Size / Colour / Quantity) ─────────────── -->
+    @if (pickStep() !== null) {
       <div
         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         (click)="cancelVariantPick()"
       >
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6" (click)="$event.stopPropagation()">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base font-semibold text-slate-900">Select Size</h2>
-            <button
-              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
-              (click)="cancelVariantPick()"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-          <div class="h-px bg-slate-100 my-2"></div>
-          <div class="grid grid-cols-3 gap-x-3 gap-y-2">
-            @for (size of availableSizes(); track size) {
-              <button
-                class="py-6 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-sm transition-all"
-                (click)="selectSize(size)"
-              >{{ size }}</button>
-            }
-          </div>
-        </div>
-      </div>
-    }
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg" (click)="$event.stopPropagation()">
 
-    <!-- ── Colour Modal ──────────────────────────────────────────────────── -->
-    @if (pickStep() === 'color') {
-      <div
-        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-        (click)="cancelVariantPick()"
-      >
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6" (click)="$event.stopPropagation()">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base font-semibold text-slate-900">Select Colour</h2>
-            <button
-              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
-              (click)="cancelVariantPick()"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-          <div class="h-px bg-slate-100 my-2"></div>
-          <div class="grid grid-cols-3 gap-x-3 gap-y-2">
-            @for (color of availableColors(); track color) {
-              <button
-                class="py-6 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-sm transition-all"
-                (click)="selectColor(color)"
-              >{{ color }}</button>
-            }
-          </div>
-        </div>
-      </div>
-    }
+          <!-- Breadcrumb + Close -->
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200">
+            <div class="flex items-center gap-1.5 text-md">
 
-    <!-- ── Quantity Modal ────────────────────────────────────────────────── -->
-    @if (pickStep() === 'qty') {
-      <div
-        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-        (click)="cancelVariantPick()"
-      >
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6" (click)="$event.stopPropagation()">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Select Quantity</h2>
+              <!-- Size crumb -->
+              @if (pickStep() === 'size') {
+                <span class="font-semibold text-gray-800">Size</span>
+              } @else if (selectedSize()) {
+                <button class="text-gray-400 hover:text-gray-600 hover:underline" (click)="goBackToSize()">Size: {{ selectedSize() }}</button>
+              } @else {
+                <span class="text-gray-300">Size</span>
+              }
+
+              <svg class="shrink-0 size-3 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+
+              <!-- Colour crumb -->
+              @if (pickStep() === 'color') {
+                <span class="font-semibold text-gray-800">Colour</span>
+              } @else if (selectedColor()) {
+                <button class="text-gray-400 hover:text-gray-600 hover:underline" (click)="goBackToColor()">Colour: {{ selectedColor() }}</button>
+              } @else {
+                <span class="text-gray-300">Colour</span>
+              }
+
+              <svg class="shrink-0 size-3 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+
+              <!-- Quantity crumb -->
+              @if (pickStep() === 'qty') {
+                <span class="font-semibold text-gray-800">Quantity</span>
+              } @else {
+                <span class="text-gray-300">Quantity</span>
+              }
+            </div>
+
+            <!-- Close button -->
             <button
-              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+              type="button"
+              class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none"
               (click)="cancelVariantPick()"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              <span class="sr-only">Close</span>
+              <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"/>
+                <path d="m6 6 12 12"/>
               </svg>
             </button>
           </div>
-          <div class="h-px bg-slate-100 my-4"></div>
-          <div class="flex items-center justify-center gap-4 py-4">
-            <button
-              class="w-16 h-16 rounded-xl border-2 border-slate-200 flex items-center justify-center text-2xl font-light text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-colors"
-              [disabled]="pickQty() <= 1"
-              (click)="pickQty.set(pickQty() - 1)"
-            >−</button>
-            <span class="text-4xl font-bold text-slate-900 min-w-[3rem] text-center select-none">{{ pickQty() }}</span>
-            <button
-              class="w-16 h-16 rounded-xl border-2 border-slate-200 flex items-center justify-center text-2xl font-light text-slate-600 hover:bg-slate-50 transition-colors"
-              (click)="pickQty.set(pickQty() + 1)"
-            >+</button>
-          </div>
-          <button
-            class="mt-4 w-full py-4 bg-brand-600 hover:bg-brand-700 text-white font-bold text-base rounded-xl transition-colors"
-            (click)="confirmAddToCart()"
-          >Add to Cart</button>
+
+          <!-- ── Step content ── -->
+          <div class="p-4">
+
+          <!-- ── Size step ── -->
+          @if (pickStep() === 'size') {
+            <div class="grid grid-cols-3 gap-2">
+              @for (size of allSizes(); track size) {
+                <button
+                  type="button"
+                  class="py-5 px-4 inline-flex justify-center items-center text-base font-medium rounded-lg border-2 border-blue-600 bg-blue-500 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 focus:border-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+                  (click)="selectSize(size)"
+                >{{ size }}</button>
+              }
+            </div>
+
+            <!-- Add new value -->
+            <div class="mt-3">
+              @if (!showSizeInput()) {
+                <a class="text-sm text-blue-600 hover:underline cursor-pointer" (click)="showSizeInput.set(true)">+ Add new value</a>
+              } @else {
+                <div class="mt-2 flex gap-2">
+                  <input
+                    #sizeInput
+                    type="text"
+                    placeholder="Enter value..."
+                    class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
+                    [value]="newSizeInput()"
+                    (input)="newSizeInput.set($any($event.target).value)"
+                    (keydown.enter)="addCustomSize()"
+                  />
+                  <button
+                    type="button"
+                    class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none transition-colors"
+                    (click)="addCustomSize()"
+                  >Add</button>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ── Colour step ── -->
+          @if (pickStep() === 'color') {
+            <div class="grid grid-cols-3 gap-2">
+              @for (color of allColors(); track color) {
+                <button
+                  type="button"
+                  class="py-5 px-4 inline-flex justify-center items-center text-base font-medium rounded-lg border-2 border-blue-600 bg-blue-500 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 focus:border-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+                  (click)="selectColor(color)"
+                >{{ color }}</button>
+              }
+            </div>
+
+            <!-- Add new value -->
+            <div class="mt-3">
+              @if (!showColorInput()) {
+                <a class="text-sm text-blue-600 hover:underline cursor-pointer" (click)="showColorInput.set(true)">+ Add new value</a>
+              } @else {
+                <div class="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter value..."
+                    class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
+                    [value]="newColorInput()"
+                    (input)="newColorInput.set($any($event.target).value)"
+                    (keydown.enter)="addCustomColor()"
+                  />
+                  <button
+                    type="button"
+                    class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none transition-colors"
+                    (click)="addCustomColor()"
+                  >Add</button>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ── Quantity step ── -->
+          @if (pickStep() === 'qty') {
+            <div class="flex flex-col gap-6">
+              <div class="flex items-center justify-center">
+                <div class="py-4 px-6 inline-block bg-white border-2 border-gray-300 rounded-lg">
+                  <div class="flex items-center gap-x-3">
+                    <button
+                      type="button"
+                      class="size-16 inline-flex justify-center items-center gap-x-2 text-xl font-medium rounded-lg border-2 border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
+                      [disabled]="pickQty() <= 1"
+                      (click)="pickQty.set(pickQty() - 1)"
+                      aria-label="Decrease"
+                    >
+                      <svg class="shrink-0 size-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14"/>
+                      </svg>
+                    </button>
+                    <input
+                      type="number"
+                      class="p-0 w-16 bg-transparent border-0 text-gray-800 text-center text-2xl font-bold focus:ring-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      [value]="pickQty()"
+                      (change)="pickQty.set(Math.max(1, +$any($event.target).value))"
+                    />
+                    <button
+                      type="button"
+                      class="size-16 inline-flex justify-center items-center gap-x-2 text-xl font-medium rounded-lg border-2 border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
+                      (click)="pickQty.set(pickQty() + 1)"
+                      aria-label="Increase"
+                    >
+                      <svg class="shrink-0 size-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14"/>
+                        <path d="M12 5v14"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="py-4 px-6 inline-flex justify-center items-center w-full text-lg font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+                (click)="confirmAddToCart()"
+              >Add to Cart</button>
+            </div>
+          }
+
+          </div><!-- end step content -->
         </div>
       </div>
     }
@@ -493,6 +572,7 @@ export class PosComponent implements OnInit, OnDestroy {
   private productSvc = inject(ProductService);
   private toast      = inject(ToastService);
   cartSvc            = inject(CartService);
+  Math               = Math;
   private destroy$   = new Subject<void>();
 
   searchCtrl = new FormControl('');
@@ -508,6 +588,14 @@ export class PosComponent implements OnInit, OnDestroy {
   selectedSize     = signal<string | null>(null);
   selectedColor    = signal<string | null>(null);
   pickQty          = signal(1);
+
+  // Custom values added during this transaction (not saved to backend)
+  extraSizes     = signal<string[]>([]);
+  extraColors    = signal<string[]>([]);
+  showSizeInput  = signal(false);
+  showColorInput = signal(false);
+  newSizeInput   = signal('');
+  newColorInput  = signal('');
 
   // Cart accordion
   expandedCartItemId = signal<string | null>(null);
@@ -538,9 +626,14 @@ export class PosComponent implements OnInit, OnDestroy {
     const p = this.selectingProduct();
     if (!p) return [];
     const sz = this.selectedSize();
-    const variants = sz ? p.variants.filter(v => v.size === sz) : p.variants;
+    const filtered = sz ? p.variants.filter(v => v.size === sz) : p.variants;
+    // If selected size is custom (no matching variants), fall back to all product colors
+    const variants = filtered.length > 0 ? filtered : p.variants;
     return [...new Set(variants.map(v => v.color).filter((c): c is string => !!c))];
   });
+
+  allSizes = computed(() => [...this.availableSizes(), ...this.extraSizes()]);
+  allColors = computed(() => [...this.availableColors(), ...this.extraColors()]);
 
   ngOnInit() {
     this.load();
@@ -571,6 +664,12 @@ export class PosComponent implements OnInit, OnDestroy {
     this.selectedSize.set(null);
     this.selectedColor.set(null);
     this.pickQty.set(1);
+    this.extraSizes.set([]);
+    this.extraColors.set([]);
+    this.showSizeInput.set(false);
+    this.showColorInput.set(false);
+    this.newSizeInput.set('');
+    this.newColorInput.set('');
 
     const sizes = [...new Set(product.variants.map(v => v.size).filter(Boolean))];
     if (sizes.length > 0) {
@@ -583,14 +682,58 @@ export class PosComponent implements OnInit, OnDestroy {
 
   selectSize(size: string) {
     this.selectedSize.set(size);
+    this.showSizeInput.set(false);
+    this.newSizeInput.set('');
     const p = this.selectingProduct()!;
-    const colors = [...new Set(p.variants.filter(v => v.size === size).map(v => v.color).filter(Boolean))];
+    let colors = [...new Set(p.variants.filter(v => v.size === size).map(v => v.color).filter((c): c is string => !!c))];
+    // Custom size not in any variant — fall back to all product colors
+    if (colors.length === 0) {
+      colors = [...new Set(p.variants.map(v => v.color).filter((c): c is string => !!c))];
+    }
     this.pickStep.set(colors.length > 0 ? 'color' : 'qty');
   }
 
   selectColor(color: string) {
     this.selectedColor.set(color);
+    this.showColorInput.set(false);
+    this.newColorInput.set('');
     this.pickStep.set('qty');
+  }
+
+  addCustomSize() {
+    const val = this.newSizeInput().trim();
+    if (!val) return;
+    this.extraSizes.update(arr => [...arr, val]);
+    this.newSizeInput.set('');
+    this.showSizeInput.set(false);
+    this.selectSize(val);
+  }
+
+  addCustomColor() {
+    const val = this.newColorInput().trim();
+    if (!val) return;
+    this.extraColors.update(arr => [...arr, val]);
+    this.newColorInput.set('');
+    this.showColorInput.set(false);
+    this.selectColor(val);
+  }
+
+  goBackToSize() {
+    this.selectedSize.set(null);
+    this.selectedColor.set(null);
+    this.extraSizes.set([]);
+    this.extraColors.set([]);
+    this.showSizeInput.set(false);
+    this.newSizeInput.set('');
+    this.pickStep.set('size');
+  }
+
+  goBackToColor() {
+    this.selectedColor.set(null);
+    this.extraColors.set([]);
+    this.showColorInput.set(false);
+    this.newColorInput.set('');
+    this.pickStep.set('color');
   }
 
   cancelVariantPick() {
@@ -599,6 +742,12 @@ export class PosComponent implements OnInit, OnDestroy {
     this.selectedSize.set(null);
     this.selectedColor.set(null);
     this.pickQty.set(1);
+    this.extraSizes.set([]);
+    this.extraColors.set([]);
+    this.showSizeInput.set(false);
+    this.showColorInput.set(false);
+    this.newSizeInput.set('');
+    this.newColorInput.set('');
   }
 
   confirmAddToCart() {
@@ -606,10 +755,21 @@ export class PosComponent implements OnInit, OnDestroy {
     if (!product) return;
     const sz  = this.selectedSize();
     const col = this.selectedColor();
-    const variant = product.variants.find(v =>
+    let variant = product.variants.find(v =>
       (!sz || v.size === sz) && (!col || v.color === col)
-    ) ?? product.variants[0];
-    if (!variant) return;
+    );
+
+    // Custom size/color not in backend — use best matching variant but override displayed values
+    if (!variant) {
+      const base = product.variants.find(v => !sz || v.size === sz) ?? product.variants[0];
+      if (!base) return;
+      // Generate a deterministic pseudo-ID so the custom combo gets its own cart slot
+      const customId = -Math.abs(
+        Array.from(`${product.id}-${sz ?? ''}-${col ?? ''}`).reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0)
+      );
+      variant = { ...base, id: customId, size: sz ?? base.size, color: col ?? base.color };
+    }
+
     const qty = this.pickQty();
     this.cartSvc.add(product, variant, qty);
     this.toast.success(`"${product.name} · ${variant.sku}" ×${qty} added`);
@@ -678,6 +838,10 @@ export class PosComponent implements OnInit, OnDestroy {
 
   checkout() {
     this.toast.info('Checkout coming soon');
+  }
+
+  isInCart(productId: number): boolean {
+    return this.cartSvc.items().some(i => i.productId === productId);
   }
 
   resolveImageUrl(url?: string): string {
