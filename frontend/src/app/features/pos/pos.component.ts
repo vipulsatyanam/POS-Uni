@@ -283,15 +283,17 @@ import { environment } from '../../../environments/environment';
           </div>
 
           <!-- ADD | Discount | Promo Code | Note -->
-          <div class="flex flex-nowrap justify-between items-center pb-3 mt-5">
-            <h2 class="text-gray-800 font-bold text-sm">ADD</h2>
-            <div class="flex items-center gap-x-5">
-              <button
-                class="text-gray-500 font-normal text-sm cursor-pointer hover:text-gray-700 transition-colors"
-                (click)="openDiscountModal()"
-              >Discount</button>
-              <button class="text-gray-500 font-normal text-sm cursor-pointer hover:text-gray-700 transition-colors">Promo Code</button>
-              <button class="text-blue-500 font-normal text-sm cursor-pointer hover:text-blue-700 transition-colors">Note</button>
+          <div class="mt-auto pb-3">
+            <div class="flex flex-nowrap justify-between items-center mb-3 mt-5">
+              <h2 class="text-gray-800 font-bold">ADD</h2>
+              <div class="flex items-center gap-x-5">
+                <p
+                  class="text-gray-500 font-normal cursor-pointer hover:text-gray-700"
+                  (click)="openDiscountModal()"
+                >Discount</p>
+                <p class="text-gray-500 font-normal cursor-pointer hover:text-gray-700">Promo Code</p>
+                <p class="text-blue-500 font-normal cursor-pointer hover:text-gray-700">Note</p>
+              </div>
             </div>
           </div>
         </div>
@@ -302,8 +304,8 @@ import { environment } from '../../../environments/environment';
           [disabled]="cartSvc.items().length === 0"
           (click)="checkout()"
         >
-          <span class="text-sm font-semibold">Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})</span>
-          <span class="text-sm font-semibold">{{ cartSvc.total() | currency }}</span>
+          <span>Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})</span>
+          <span class="text-lg font-semibold">{{ cartSvc.total() | currency }}</span>
         </button>
       </div>
     </div>
