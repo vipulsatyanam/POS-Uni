@@ -15,13 +15,61 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="flex flex-col lg:flex-row gap-3 lg:gap-4 h-[calc(100dvh-3.5rem-1.5rem)] sm:h-[calc(100dvh-3.5rem-2rem)] lg:h-[calc(100dvh-3.5rem-3rem)]">
+    <div class="flex flex-col h-full">
+
+      <!-- ── POS Header: Park Sale / Retrieve Sale / More options ────────── -->
+      <div class="flex items-center justify-end px-4 lg:px-6 shrink-0 gap-6 relative bg-slate-50" style="height:40px">
+        <button
+          class="flex items-center gap-1.5 text-sm leading-5 text-slate-600 hover:text-slate-900 transition-colors font-normal"
+          (click)="parkSale()"
+        >
+          <svg class="shrink-0 w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3M3.22302 14C4.13247 18.008 7.71683 21 12 21c4.9706 0 9-4.0294 9-9 0-4.97056-4.0294-9-9-9-3.72916 0-6.92858 2.26806-8.29409 5.5M7 9H3V5"/>
+          </svg>
+          Park Sale
+        </button>
+        <button
+          class="flex items-center gap-1.5 text-sm leading-5 text-slate-600 hover:text-slate-900 transition-colors font-normal"
+          (click)="retrieveSaleModal.set(true)"
+        >
+          <svg class="shrink-0 w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 9H8a5 5 0 0 0 0 10h9m4-10-4-4m4 4-4 4"/>
+          </svg>
+          Retrieve Sale
+        </button>
+        <div class="relative">
+          <button
+            class="flex items-center gap-1 text-sm leading-5 text-slate-600 hover:text-slate-900 transition-colors font-normal"
+            (click)="moreOptionsOpen.set(!moreOptionsOpen())"
+          >
+            <svg class="shrink-0 w-2 h-2" viewBox="0 0 10 10"><polygon points="0,0 10,0 5,8" fill="currentColor"/></svg>
+            More options
+          </button>
+          @if (moreOptionsOpen()) {
+            <div class="fixed inset-0" style="z-index:48" (click)="moreOptionsOpen.set(false)"></div>
+            <div class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl w-44 py-1" style="z-index:49">
+              <button
+                class="flex items-center gap-2.5 w-full px-4 py-3 text-sm text-red-500 hover:bg-gray-50 transition-colors font-normal"
+                (click)="moreOptionsOpen.set(false); clearCartModal.set(true)"
+              >
+                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                  <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
+                </svg>
+                Clear Cart
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- ── Two-column panels ───────────────────────────────────────────── -->
+      <div class="flex flex-col lg:flex-row gap-5 flex-1 min-h-0 overflow-hidden p-2 sm:p-5 sm:py-0">
 
       <!-- ── LEFT: Search Panel ──────────────────────────────────────────── -->
-      <div class="flex-1 flex flex-col min-w-0 bg-white rounded-xl border border-slate-200 shadow-card">
+      <div class="flex-1 flex flex-col min-w-0">
 
         <!-- Search input -->
-        <div class="px-4 py-4">
+        <div class="px-5 pt-4 pb-0">
           <div class="relative" style="z-index:40">
             <div class="absolute inset-y-0 left-0 flex items-center pointer-events-none z-20 pl-3.5">
               <svg class="shrink-0 w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -98,12 +146,12 @@ import { environment } from '../../../environments/environment';
                           }
                         </div>
                         <div>
-                          <div class="font-medium text-gray-800 leading-tight">{{ product.name }}</div>
+                          <div class="text-base font-medium text-gray-800 leading-tight tracking-wide">{{ product.name }}</div>
                           <div class="text-xs text-gray-500 dark:text-neutral-400">{{ product.sku }}</div>
                         </div>
                       </div>
                       <div class="flex items-center gap-x-3">
-                        <span class="font-semibold text-gray-800">{{ product.price | currency }}</span>
+                        <span class="text-base font-semibold text-gray-800 tracking-wide">{{ product.price | currency }}</span>
                         @if (isInCart(product.id)) {
                           <svg class="shrink-0 size-3.5 text-blue-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12"/>
@@ -119,24 +167,26 @@ import { environment } from '../../../environments/environment';
           </div>
         </div>
 
-        <!-- Empty state -->
-        <div class="flex-1 flex items-center justify-center border-t border-slate-100">
-          <div class="text-center px-6">
-            <svg class="w-14 h-14 mx-auto mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
-            </svg>
-            <p class="text-sm font-medium text-slate-400">Click the search box to find products</p>
-            <p class="text-xs mt-1 text-slate-300">or scan a barcode to add directly</p>
-          </div>
+        <!-- Quick-action tiles -->
+        <div class="px-5 pb-5 pt-5 flex flex-wrap gap-3">
+          <button
+            class="w-36 h-24 rounded-xl text-white text-sm font-semibold flex items-center justify-center text-center leading-tight shadow-sm hover:opacity-90 transition-opacity"
+            style="background-color:#3b82f6"
+            (click)="openInvoicePaymentModal()"
+          >Invoice<br>Payment</button>
+          <button
+            class="w-36 h-24 rounded-xl text-white text-sm font-semibold flex items-center justify-center text-center leading-tight shadow-sm hover:opacity-90 transition-opacity"
+            style="background-color:#a855f7"
+            (click)="workClothesStep.set(1); workClothesModal.set(true)"
+          >Work<br>Clothes</button>
         </div>
       </div>
 
       <!-- ── RIGHT: Cart Panel ───────────────────────────────────────────── -->
-      <div class="w-full h-64 sm:h-72 lg:h-auto lg:w-[420px] shrink-0 flex flex-col">
+      <div class="w-full lg:w-[420px] shrink-0 flex flex-col lg:h-full lg:min-h-0">
 
         <!-- White card: Customer + Items + ADD row -->
-        <div class="flex flex-col px-5 pt-4 border bg-white border-gray-200 rounded-xl shadow-xs flex-1 overflow-hidden">
+        <div class="flex flex-col px-5 pt-4 border border-gray-200 bg-white rounded-xl shadow-sm flex-1 min-h-0 overflow-hidden">
 
           <!-- Add Customer (input with filled person icon) -->
           <div class="relative mb-5">
@@ -153,19 +203,12 @@ import { environment } from '../../../environments/environment';
           </div>
 
           <!-- Items list (scrollable) -->
-          <div class="flex-1 overflow-y-auto -mx-5">
+          <div class="flex-1 overflow-y-auto" style="min-height:200px">
             @if (cartSvc.items().length === 0) {
-              <div class="flex flex-col items-center justify-center h-full py-12 text-gray-400">
-                <svg class="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
-                <p class="text-sm font-medium text-gray-500">No items added yet</p>
-                <p class="text-xs mt-1 text-gray-400">Search and select a product to add</p>
-              </div>
+              <div class="text-center text-gray-400 py-10">No items added yet</div>
             } @else {
               @for (item of cartSvc.items(); track item.id) {
-                <div class="border-b border-gray-200 py-3 px-5 hover:bg-gray-50 transition-colors">
+                <div class="border-b border-gray-200 py-3 px-2 hover:bg-gray-50 transition-colors">
 
                   <!-- Accordion header -->
                   <div
@@ -196,7 +239,7 @@ import { environment } from '../../../environments/environment';
                     </div>
 
                     <!-- Line total -->
-                    <span class="text-xl font-semibold text-gray-800 shrink-0">{{ getItemBasePrice(item) * item.quantity | currency }}</span>
+                    <span class="text-xl font-semibold text-gray-800 shrink-0">{{ getItemBasePrice(item) * item.quantity | number:'1.2-2' }}</span>
 
                     <!-- Trash (filled icon) -->
                     <button
@@ -280,35 +323,455 @@ import { environment } from '../../../environments/environment';
                 </div>
               }
             }
+            @if (cartSvc.cartDiscountValue()) {
+              <div class="border-b border-gray-200 py-3 px-2">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <h3 class="text-base font-semibold text-gray-800">
+                        Discount {{ cartSvc.cartDiscountType() === 'percentage' ? cartSvc.cartDiscountValue() + '%' : ('$' + cartSvc.cartDiscountValue()) }}
+                      </h3>
+                      <span class="inline-flex items-center gap-x-1 py-1 px-2 rounded-full text-xs font-medium bg-green-100 text-green-800">DISCOUNT</span>
+                    </div>
+                    <p class="text-sm text-gray-500">Type: {{ cartSvc.cartDiscountType() === 'percentage' ? 'Percentage' : 'Fixed Amount' }}</p>
+                    @if (cartSvc.cartDiscountDesc()) {
+                      <p class="text-sm text-gray-400">{{ cartSvc.cartDiscountDesc() }}</p>
+                    }
+                  </div>
+                  <span class="text-xl font-semibold shrink-0 text-green-600">-{{ cartSvc.cartDiscountAmount() | number:'1.2-2' }}</span>
+                  <button class="shrink-0 text-gray-500 hover:text-red-700" (click)="cartSvc.removeCartDiscount()">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            }
           </div>
 
           <!-- ADD | Discount | Promo Code | Note -->
-          <div class="mt-auto pb-3">
-            <div class="flex flex-nowrap justify-between items-center mb-3 mt-5">
+          <div class="shrink-0 pb-3 border-t border-gray-100">
+            <div class="flex flex-nowrap justify-between items-center mt-3">
               <h2 class="text-gray-800 font-bold">ADD</h2>
               <div class="flex items-center gap-x-5">
                 <p
                   class="text-gray-500 font-normal cursor-pointer hover:text-gray-700"
                   (click)="openDiscountModal()"
                 >Discount</p>
-                <p class="text-gray-500 font-normal cursor-pointer hover:text-gray-700">Promo Code</p>
-                <p class="text-blue-500 font-normal cursor-pointer hover:text-gray-700">Note</p>
+                <p
+                  class="text-gray-500 font-normal cursor-pointer hover:text-gray-700"
+                  (click)="openPromoCodeModal()"
+                >Promo Code</p>
+                <p
+                  class="text-blue-500 font-normal cursor-pointer hover:text-gray-700"
+                  (click)="openNoteModal()"
+                >Note</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tender button (outside white card) -->
+        <!-- Tender button -->
         <button
-          class="bg-blue-500 text-white px-4 py-6 rounded-md w-full hover:bg-blue-600 transition-colors mt-5 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          class="bg-blue-500 text-white px-4 py-5 rounded-lg w-full hover:bg-blue-600 transition-colors mt-3 mb-3 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
           [disabled]="cartSvc.items().length === 0"
           (click)="checkout()"
         >
-          <span>Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})</span>
-          <span class="text-lg font-semibold">{{ cartSvc.total() | currency }}</span>
+          <span class="text-base font-semibold">Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})</span>
+          <span class="text-base font-semibold">{{ cartSvc.total() | currency }}</span>
         </button>
       </div>
-    </div>
+
+      </div><!-- end two-column panels -->
+    </div><!-- end outer flex-col -->
+
+    <!-- ── Work Clothes Modal ────────────────────────────────────────────── -->
+    @if (workClothesModal()) {
+      <div
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        (click)="closeWorkClothesModal()"
+      >
+        <div class="w-full max-w-lg flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200">
+            <h3 class="font-bold text-gray-800">
+              @if (workClothesStep() === 1) { Enter Product Details }
+              @else if (workClothesStep() === 2) { Enter Size }
+              @else if (workClothesStep() === 3) { Enter Colour }
+              @else { Select Quantity }
+            </h3>
+            <button
+              type="button"
+              class="size-8 inline-flex justify-center items-center rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none"
+              (click)="closeWorkClothesModal()"
+            >
+              <svg class="shrink-0 size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Body -->
+          <div class="p-4 space-y-4">
+
+            <!-- Step 1: Name + Price -->
+            @if (workClothesStep() === 1) {
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Work Shirt, Safety Vest"
+                  class="py-3 px-4 block w-full border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  [value]="workClothesName()"
+                  (input)="workClothesName.set($any($event.target).value)"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Price *</label>
+                <input
+                  type="text"
+                  placeholder="$0.00"
+                  class="py-3 px-4 block w-full border-2 border-gray-300 rounded-lg text-2xl font-bold text-left focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none"
+                  [value]="workClothesPrice()"
+                  (input)="workClothesPrice.set($any($event.target).value)"
+                />
+              </div>
+              <div class="pt-2">
+                <button
+                  type="button"
+                  class="w-full py-4 px-6 inline-flex justify-center items-center text-lg font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  [disabled]="!workClothesName().trim() || !workClothesPrice().trim()"
+                  (click)="workClothesStep.set(2)"
+                >Next</button>
+              </div>
+            } @else if (workClothesStep() === 2) {
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Size *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., S, M, L, XL"
+                  class="py-3 px-4 block w-full border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                  [value]="workClothesSize()"
+                  (input)="workClothesSize.set($any($event.target).value)"
+                />
+              </div>
+              <div class="pt-4">
+                <button
+                  type="button"
+                  class="w-full py-4 px-6 inline-flex justify-center items-center text-lg font-semibold rounded-lg border border-transparent bg-purple-600 text-white hover:bg-purple-700 focus:outline-none focus:bg-purple-700 disabled:opacity-50 disabled:pointer-events-none"
+                  [disabled]="!workClothesSize().trim()"
+                  (click)="workClothesStep.set(3)"
+                >Next</button>
+              </div>
+            } @else if (workClothesStep() === 3) {
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Colour *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Navy, Black, Hi-Vis"
+                  class="py-3 px-4 block w-full border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                  [value]="workClothesColour()"
+                  (input)="workClothesColour.set($any($event.target).value)"
+                />
+              </div>
+              <div class="pt-4">
+                <button
+                  type="button"
+                  class="w-full py-4 px-6 inline-flex justify-center items-center text-lg font-semibold rounded-lg border border-transparent bg-purple-600 text-white hover:bg-purple-700 focus:outline-none focus:bg-purple-700 disabled:opacity-50 disabled:pointer-events-none"
+                  [disabled]="!workClothesColour().trim()"
+                  (click)="workClothesStep.set(4)"
+                >Next</button>
+              </div>
+            } @else {
+              <div class="flex flex-col gap-6">
+                <div class="flex items-center justify-center">
+                  <div class="py-4 px-6 inline-block bg-white border-2 border-gray-300 rounded-lg">
+                    <div class="flex items-center gap-x-3">
+                      <button
+                        type="button"
+                        class="size-16 inline-flex justify-center items-center gap-x-2 text-xl font-medium rounded-lg border-2 border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none disabled:opacity-50"
+                        (click)="workClothesQty.set(Math.max(1, workClothesQty() - 1))"
+                      >
+                        <svg class="shrink-0 size-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+                      </button>
+                      <input
+                        type="number"
+                        class="p-0 w-16 bg-transparent border-0 text-gray-800 text-center text-2xl font-bold focus:ring-0"
+                        [value]="workClothesQty()"
+                        (input)="workClothesQty.set(Math.max(1, +$any($event.target).value || 1))"
+                      />
+                      <button
+                        type="button"
+                        class="size-16 inline-flex justify-center items-center gap-x-2 text-xl font-medium rounded-lg border-2 border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none disabled:opacity-50"
+                        (click)="workClothesQty.set(workClothesQty() + 1)"
+                      >
+                        <svg class="shrink-0 size-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="py-4 px-6 inline-flex justify-center items-center text-lg font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 focus:outline-none transition-colors"
+                  (click)="addWorkClothesItem()"
+                >Add to Cart</button>
+              </div>
+            }
+
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Empty Cart Modal (Park Sale) ──────────────────────────────────── -->
+    @if (emptyCartModal()) {
+      <div
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        (click)="emptyCartModal.set(false)"
+      >
+        <div class="w-full max-w-sm flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl" (click)="$event.stopPropagation()">
+          <div class="p-6 text-center">
+            <svg class="shrink-0 size-10 text-gray-400 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
+            </svg>
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Cart is Empty</h3>
+            <p class="text-sm text-gray-500">Add items to the cart before parking a sale.</p>
+          </div>
+          <div class="flex justify-center pb-6 px-6">
+            <button
+              type="button"
+              class="py-2.5 px-6 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors focus:outline-none"
+              (click)="emptyCartModal.set(false)"
+            >Got it</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Park Sale Modal ────────────────────────────────────────────────── -->
+    @if (parkSaleModal()) {
+      <div
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        (click)="parkSaleModal.set(false)"
+      >
+        <div class="w-full max-w-lg flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200">
+            <h3 class="font-bold text-lg text-gray-800">Park Sale</h3>
+            <button
+              type="button"
+              class="size-8 inline-flex justify-center items-center rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none"
+              (click)="parkSaleModal.set(false)"
+            >
+              <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Body -->
+          <div class="p-5">
+            <p class="text-gray-700 mb-4">You are about to park this sale. Add a note so it can be identified by the next person who continues this sale.</p>
+            <textarea
+              rows="4"
+              placeholder="e.g. Customer coming back after lunch, waiting on size confirmation..."
+              class="w-full px-3 py-3 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none mb-3"
+              [value]="parkSaleNote()"
+              (input)="parkSaleNote.set($any($event.target).value)"
+            ></textarea>
+            <p class="text-xs text-gray-400 mb-5">Notes can help identify a sale in the future or contain information that can help complete the sale.</p>
+            <div class="flex gap-3">
+              <button
+                type="button"
+                class="flex-1 py-2.5 px-4 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                (click)="parkSaleModal.set(false)"
+              >Cancel</button>
+              <button
+                type="button"
+                class="flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                (click)="confirmParkSale()"
+              >Park Sale</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Retrieve Sale Modal ───────────────────────────────────────────── -->
+    @if (retrieveSaleModal()) {
+      <div
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        (click)="retrieveSaleModal.set(false)"
+      >
+        <div class="w-full max-w-lg flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex justify-between items-center py-3 px-5 border-b border-gray-200">
+            <div>
+              <h3 class="font-bold text-lg text-gray-800">Parked Sales</h3>
+              <p class="text-xs text-gray-400 mt-0.5">Select a sale to continue</p>
+            </div>
+            <button
+              type="button"
+              class="size-8 inline-flex justify-center items-center rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none"
+              (click)="retrieveSaleModal.set(false)"
+            >
+              <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Sale List -->
+          <div class="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+            @if (parkedSales().length === 0) {
+              <div class="p-10 text-center">
+                <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                  <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0-4-4m4 4-4 4"/>
+                  </svg>
+                </div>
+                <p class="text-sm font-medium text-gray-500">No parked sales</p>
+                <p class="text-xs text-gray-400 mt-1">Park a sale first to retrieve it here.</p>
+              </div>
+            } @else {
+              @for (sale of parkedSales(); track sale.parkedAt; let i = $index) {
+                <button
+                  type="button"
+                  class="w-full text-left flex items-start gap-4 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                  (click)="retrieveSale(i)"
+                >
+                  <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.4 6h12.8M7 13h10M9 21a1 1 0 100-2 1 1 0 000 2zm10 0a1 1 0 100-2 1 1 0 000 2z"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2 mb-0.5">
+                      <p class="text-sm font-semibold text-gray-800 truncate">No customer</p>
+                      <span class="text-sm font-bold text-blue-600 shrink-0">{{ sale.total | currency }}</span>
+                    </div>
+                    <p class="text-xs text-gray-500">{{ sale.items.length }} item{{ sale.items.length !== 1 ? 's' : '' }} &nbsp;·&nbsp; {{ sale.parkedAt | date:'M/d/yyyy, h:mm:ss a' }}</p>
+                    @if (sale.note) {
+                      <p class="text-xs text-gray-400 mt-1 italic truncate">"{{ sale.note }}"</p>
+                    }
+                  </div>
+                  <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-500 shrink-0 mt-1 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              }
+            }
+          </div>
+
+          <!-- Footer -->
+          <div class="px-5 py-3 border-t border-gray-100 flex justify-end">
+            <button
+              type="button"
+              class="py-2 px-4 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              (click)="retrieveSaleModal.set(false)"
+            >Close</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Clear Cart Confirmation Modal ──────────────────────────────────── -->
+    @if (clearCartModal()) {
+      <div
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        (click)="clearCartModal.set(false)"
+      >
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 flex flex-col items-center text-center" (click)="$event.stopPropagation()">
+          <!-- Trash icon -->
+          <div class="mb-4">
+            <svg class="w-12 h-12 text-red-400 mx-auto" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Clear Cart?</h2>
+          <p class="text-sm text-gray-500 mb-8">All items in the cart will be removed. This cannot be undone.</p>
+          <div class="flex gap-3 w-full">
+            <button
+              class="flex-1 py-3.5 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors"
+              (click)="clearCartModal.set(false)"
+            >Cancel</button>
+            <button
+              class="flex-1 py-3.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors"
+              (click)="confirmClearCart()"
+            >Clear Cart</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Invoice Payment Modal ──────────────────────────────────────────── -->
+    @if (invoicePaymentModal()) {
+      <div
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        (click)="invoicePaymentModal.set(false)"
+      >
+        <div class="w-full max-w-lg flex flex-col bg-white border border-gray-200 shadow-2xs rounded-xl" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200">
+            <h3 class="font-bold text-gray-800">Invoice Payment</h3>
+            <button
+              type="button"
+              class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none"
+              (click)="invoicePaymentModal.set(false)"
+            >
+              <span class="sr-only">Close</span>
+              <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"/>
+                <path d="m6 6 12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="p-6 overflow-y-auto">
+            <div class="space-y-4">
+              <!-- Invoice Reference -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Invoice Reference</label>
+                <div class="flex">
+                  <span class="inline-flex items-center px-4 text-sm font-semibold text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-s-lg select-none">SAU</span>
+                  <input
+                    type="text"
+                    class="py-3 px-4 block w-full border border-gray-300 rounded-e-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Enter number"
+                    [value]="invoiceRef()"
+                    (input)="invoiceRef.set($any($event.target).value)"
+                  />
+                </div>
+              </div>
+              <!-- Total Amount -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Total Amount</label>
+                <input
+                  type="text"
+                  class="py-3 px-4 block w-full border-2 border-gray-200 rounded-lg text-2xl font-bold text-left focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  placeholder="$0.00"
+                  [value]="invoiceAmountRaw()"
+                  (input)="invoiceAmountRaw.set($any($event.target).value)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200">
+            <button
+              type="button"
+              class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-2xs hover:bg-gray-50 focus:outline-none focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
+              (click)="invoicePaymentModal.set(false)"
+            >Cancel</button>
+            <button
+              type="button"
+              class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+              (click)="applyInvoicePayment()"
+            >Apply Payment</button>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- ── Variant Selection Modal (Size / Colour / Quantity) ─────────────── -->
     @if (pickStep() !== null) {
@@ -496,70 +959,180 @@ import { environment } from '../../../environments/environment';
       </div>
     }
 
+    <!-- ── Note Modal ───────────────────────────────────────────────────── -->
+    @if (noteModal()) {
+      <div
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        (click)="noteModal.set(false)"
+      >
+        <div class="w-full max-w-lg flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200">
+            <h3 class="font-bold text-gray-800">Add Note</h3>
+            <button
+              type="button"
+              class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none"
+              (click)="noteModal.set(false)"
+            >
+              <svg class="shrink-0 size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Body -->
+          <div class="p-6 overflow-y-auto">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Note</label>
+                <textarea
+                  rows="4"
+                  placeholder="Add a note for this transaction..."
+                  class="py-3 px-4 block w-full border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none resize-none"
+                  [value]="noteInput()"
+                  (input)="noteInput.set($any($event.target).value)"
+                ></textarea>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200">
+            <button
+              type="button"
+              class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 focus:outline-none"
+              (click)="noteModal.set(false)"
+            >Cancel</button>
+            <button
+              type="button"
+              class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none"
+              (click)="saveNote()"
+            >Save Note</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Promo Code Modal ─────────────────────────────────────────────── -->
+    @if (promoCodeModal()) {
+      <div
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        (click)="promoCodeModal.set(false)"
+      >
+        <div class="w-full max-w-lg flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200">
+            <h3 class="font-bold text-gray-800">Apply Promo Code</h3>
+            <button
+              type="button"
+              class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none"
+              (click)="promoCodeModal.set(false)"
+            >
+              <svg class="shrink-0 size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Body -->
+          <div class="p-6 overflow-y-auto">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Promo Code</label>
+                <input
+                  type="text"
+                  placeholder="Enter promo code"
+                  class="py-3 px-4 block w-full border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none uppercase"
+                  [value]="promoCodeInput()"
+                  (input)="promoCodeInput.set($any($event.target).value.toUpperCase())"
+                />
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200">
+            <button
+              type="button"
+              class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 focus:outline-none"
+              (click)="promoCodeModal.set(false)"
+            >Cancel</button>
+            <button
+              type="button"
+              class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
+              [disabled]="!promoCodeInput().trim()"
+              (click)="applyPromoCode()"
+            >Apply Code</button>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- ── Add Discount Modal ────────────────────────────────────────────── -->
     @if (discountModal()) {
       <div
         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         (click)="discountModal.set(false)"
       >
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" (click)="$event.stopPropagation()">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-slate-900">Add Discount</h2>
+        <div class="w-full max-w-lg flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200">
+            <h3 class="font-bold text-gray-800">Add Discount</h3>
             <button
-              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+              type="button"
+              class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none"
               (click)="discountModal.set(false)"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              <svg class="shrink-0 size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
               </svg>
             </button>
           </div>
-          <div class="h-px bg-slate-100 mb-5"></div>
-
-          <!-- Discount Type -->
-          <div class="mb-4">
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Discount Type</label>
-            <select
-              class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand-400 bg-white"
-              [value]="discountType()"
-              (change)="discountType.set($any($event.target).value)"
-            >
-              <option value="percentage">Percentage (%)</option>
-              <option value="fixed">Fixed Amount ($)</option>
-            </select>
+          <!-- Body -->
+          <div class="p-6 overflow-y-auto">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Discount Type</label>
+                <select
+                  class="py-3 px-4 block w-full border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none bg-white"
+                  [value]="discountType()"
+                  (change)="discountType.set($any($event.target).value)"
+                >
+                  <option value="percentage">Percentage</option>
+                  <option value="fixed">Fixed Amount</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Discount Value</label>
+                <input
+                  type="number"
+                  placeholder="Enter discount value"
+                  class="py-3 px-4 block w-full border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                  [value]="discountValueInput()"
+                  (input)="discountValueInput.set($any($event.target).value)"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Holiday Sale, Member Discount"
+                  class="py-3 px-4 block w-full border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                  [value]="discountDesc()"
+                  (input)="discountDesc.set($any($event.target).value)"
+                />
+              </div>
+            </div>
           </div>
-
-          <!-- Discount Value -->
-          <div class="mb-4">
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-              Discount Value {{ discountType() === 'percentage' ? '(%)' : '($)' }}
-            </label>
-            <input
-              type="number"
-              min="0"
-              [placeholder]="discountType() === 'percentage' ? 'e.g. 10' : 'e.g. 5.00'"
-              class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-brand-400"
-              [value]="discountValueInput()"
-              (input)="discountValueInput.set($any($event.target).value)"
-            />
+          <!-- Footer -->
+          <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200">
+            <button
+              type="button"
+              class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 focus:outline-none"
+              (click)="discountModal.set(false)"
+            >Cancel</button>
+            <button
+              type="button"
+              class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
+              (click)="applyDiscount()"
+            >Apply Discount</button>
           </div>
-
-          <!-- Description -->
-          <div class="mb-5">
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Description <span class="font-normal text-slate-400">(Optional)</span></label>
-            <input
-              type="text"
-              placeholder="e.g. Staff discount"
-              class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-brand-400"
-              [value]="discountDesc()"
-              (input)="discountDesc.set($any($event.target).value)"
-            />
-          </div>
-
-          <button
-            class="w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors"
-            (click)="applyDiscount()"
-          >Apply Discount</button>
         </div>
       </div>
     }
@@ -584,6 +1157,39 @@ export class PosComponent implements OnInit, OnDestroy {
   // Search dropdown
   dropdownOpen = signal(false);
 
+  // More options dropdown
+  moreOptionsOpen = signal(false);
+
+  // Empty cart modal (Park Sale)
+  emptyCartModal  = signal(false);
+
+  // Park Sale modal
+  parkSaleModal = signal(false);
+  parkSaleNote  = signal('');
+
+  // Parked sales store
+  parkedSales = signal<{ items: import('../../core/models/product.model').CartItem[]; note: string; total: number; parkedAt: Date }[]>([]);
+
+  // Retrieve Sale modal
+  retrieveSaleModal = signal(false);
+
+  // Clear cart modal
+  clearCartModal = signal(false);
+
+  // Invoice payment modal
+  invoicePaymentModal = signal(false);
+  invoiceRef       = signal('');
+  invoiceAmountRaw = signal('');
+
+  // Work Clothes modal
+  workClothesModal  = signal(false);
+  workClothesStep   = signal(1);
+  workClothesName   = signal('');
+  workClothesPrice  = signal('');
+  workClothesSize   = signal('');
+  workClothesColour = signal('');
+  workClothesQty    = signal(1);
+
   // Step-by-step variant selection
   selectingProduct = signal<Product | null>(null);
   pickStep         = signal<'size' | 'color' | 'qty' | null>(null);
@@ -601,6 +1207,14 @@ export class PosComponent implements OnInit, OnDestroy {
 
   // Cart accordion
   expandedCartItemId = signal<string | null>(null);
+
+  // Note modal
+  noteModal = signal(false);
+  noteInput = signal('');
+
+  // Promo code modal
+  promoCodeModal = signal(false);
+  promoCodeInput = signal('');
 
   // Discount modal
   discountModal      = signal(false);
@@ -629,7 +1243,6 @@ export class PosComponent implements OnInit, OnDestroy {
     if (!p) return [];
     const sz = this.selectedSize();
     const filtered = sz ? p.variants.filter(v => v.size === sz) : p.variants;
-    // If selected size is custom (no matching variants), fall back to all product colors
     const variants = filtered.length > 0 ? filtered : p.variants;
     return [...new Set(variants.map(v => v.color).filter((c): c is string => !!c))];
   });
@@ -688,7 +1301,6 @@ export class PosComponent implements OnInit, OnDestroy {
     this.newSizeInput.set('');
     const p = this.selectingProduct()!;
     let colors = [...new Set(p.variants.filter(v => v.size === size).map(v => v.color).filter((c): c is string => !!c))];
-    // Custom size not in any variant — fall back to all product colors
     if (colors.length === 0) {
       colors = [...new Set(p.variants.map(v => v.color).filter((c): c is string => !!c))];
     }
@@ -761,11 +1373,9 @@ export class PosComponent implements OnInit, OnDestroy {
       (!sz || v.size === sz) && (!col || v.color === col)
     );
 
-    // Custom size/color not in backend — use best matching variant but override displayed values
     if (!variant) {
       const base = product.variants.find(v => !sz || v.size === sz) ?? product.variants[0];
       if (!base) return;
-      // Generate a deterministic pseudo-ID so the custom combo gets its own cart slot
       const customId = -Math.abs(
         Array.from(`${product.id}-${sz ?? ''}-${col ?? ''}`).reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0)
       );
@@ -776,6 +1386,102 @@ export class PosComponent implements OnInit, OnDestroy {
     this.cartSvc.add(product, variant, qty);
     this.toast.success(`"${product.name} · ${variant.sku}" ×${qty} added`);
     this.cancelVariantPick();
+  }
+
+  confirmClearCart() {
+    this.cartSvc.clear();
+    this.clearCartModal.set(false);
+  }
+
+  parkSale() {
+    if (this.cartSvc.items().length === 0) {
+      this.emptyCartModal.set(true);
+      return;
+    }
+    this.parkSaleNote.set('');
+    this.parkSaleModal.set(true);
+  }
+
+  confirmParkSale() {
+    this.parkedSales.update(list => [...list, {
+      items: [...this.cartSvc.items()],
+      note: this.parkSaleNote(),
+      total: this.cartSvc.total(),
+      parkedAt: new Date()
+    }]);
+    this.cartSvc.clear();
+    this.parkSaleModal.set(false);
+    this.toast.success('Sale parked successfully');
+  }
+
+  retrieveSale(index: number) {
+    const sale = this.parkedSales()[index];
+    if (!sale) return;
+    sale.items.forEach(item => this.cartSvc.addRaw(item));
+    this.parkedSales.update(list => list.filter((_, i) => i !== index));
+    this.retrieveSaleModal.set(false);
+    this.toast.success('Sale retrieved');
+  }
+
+  openInvoicePaymentModal() {
+    this.invoiceRef.set('');
+    this.invoiceAmountRaw.set('');
+    this.invoicePaymentModal.set(true);
+  }
+
+  applyInvoicePayment() {
+    const ref = this.invoiceRef().trim();
+    const amount = parseFloat(this.invoiceAmountRaw().replace(/[^0-9.]/g, ''));
+    if (!ref) {
+      this.toast.error('Please enter an invoice reference number');
+      return;
+    }
+    if (!amount || amount <= 0) {
+      this.toast.error('Please enter a valid amount');
+      return;
+    }
+    const cartItem: CartItem = {
+      id: `invoice-payment-${ref}-${Date.now()}`,
+      productId: 0,
+      productName: 'Invoice Payment',
+      productSku: `Ref: SAU${ref}`,
+      productPrice: amount,
+      variant: { id: 0, sku: `SAU${ref}`, stock: 0 },
+      quantity: 1
+    };
+    this.cartSvc.addRaw(cartItem);
+    this.toast.success(`Invoice Payment SAU${ref} added`);
+    this.invoicePaymentModal.set(false);
+  }
+
+  closeWorkClothesModal() {
+    this.workClothesModal.set(false);
+    this.workClothesStep.set(1);
+    this.workClothesName.set('');
+    this.workClothesPrice.set('');
+    this.workClothesSize.set('');
+    this.workClothesColour.set('');
+    this.workClothesQty.set(1);
+  }
+
+  addWorkClothesItem() {
+    const name   = this.workClothesName().trim();
+    const price  = parseFloat(this.workClothesPrice().replace(/[^0-9.]/g, ''));
+    const size   = this.workClothesSize().trim();
+    const colour = this.workClothesColour().trim();
+    const qty    = this.workClothesQty();
+    if (!name || !price || price <= 0) return;
+    const cartItem: CartItem = {
+      id: `work-clothes-${Date.now()}`,
+      productId: 0,
+      productName: name,
+      productSku: 'CUSTOM',
+      productPrice: price,
+      variant: { id: 0, sku: 'CUSTOM', size, color: colour, stock: 0 },
+      quantity: qty
+    };
+    this.cartSvc.addRaw(cartItem);
+    this.closeWorkClothesModal();
   }
 
   toggleCartItem(id: string) {
@@ -806,36 +1512,38 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
+  openNoteModal() {
+    this.noteInput.set('');
+    this.noteModal.set(true);
+  }
+
+  saveNote() {
+    this.noteModal.set(false);
+  }
+
+  openPromoCodeModal() {
+    this.promoCodeInput.set('');
+    this.promoCodeModal.set(true);
+  }
+
+  applyPromoCode() {
+    // Promo code logic to be implemented
+    this.promoCodeModal.set(false);
+  }
+
   openDiscountModal() {
-    const expanded = this.expandedCartItemId();
-    if (this.cartSvc.items().length === 0) {
-      this.toast.info('Add items to cart first');
-      return;
-    }
-    if (!expanded) {
-      this.toast.info('Tap an item to expand it, then apply a discount');
-      return;
-    }
-    const item = this.cartSvc.items().find(i => i.id === expanded);
-    if (item) {
-      this.discountType.set(item.discountType ?? 'percentage');
-      this.discountValueInput.set(item.discountValue?.toString() ?? '');
-      this.discountDesc.set(item.discountDescription ?? '');
-    }
+    if (this.cartSvc.items().length === 0) return;
+    this.discountType.set(this.cartSvc.cartDiscountType() ?? 'percentage');
+    this.discountValueInput.set(this.cartSvc.cartDiscountValue()?.toString() ?? '');
+    this.discountDesc.set(this.cartSvc.cartDiscountDesc() ?? '');
     this.discountModal.set(true);
   }
 
   applyDiscount() {
-    const targetId = this.expandedCartItemId();
-    if (!targetId) return;
     const val = parseFloat(this.discountValueInput());
-    if (isNaN(val) || val <= 0) {
-      this.toast.error('Enter a valid discount value');
-      return;
-    }
-    this.cartSvc.setItemDiscount(targetId, this.discountType(), val, this.discountDesc() || undefined);
+    if (isNaN(val) || val <= 0) return;
+    this.cartSvc.setCartDiscount(this.discountType(), val, this.discountDesc() || undefined);
     this.discountModal.set(false);
-    this.toast.success('Discount applied');
   }
 
   checkout() {

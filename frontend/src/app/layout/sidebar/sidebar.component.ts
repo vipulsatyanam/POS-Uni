@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
-interface NavItem { label: string; icon: string; route: string; }
+interface NavItem { label: string; icon: SafeHtml; route: string; }
 
 @Component({
   selector: 'app-sidebar',
@@ -27,16 +28,14 @@ interface NavItem { label: string; icon: string; route: string; }
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 p-3 space-y-0.5">
-        <p class="px-3 pt-2 pb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Main</p>
-
+      <nav class="flex-1 p-3 space-y-0.5 pt-4">
         @for (item of navItems; track item.route) {
           <a
             [routerLink]="item.route"
             routerLinkActive="active"
             class="sidebar-link"
           >
-            <span class="sidebar-icon w-5 h-5 text-slate-400 transition-colors" [innerHTML]="item.icon"></span>
+            <span class="w-5 h-5 text-slate-400 transition-colors flex-shrink-0" [innerHTML]="item.icon"></span>
             <span>{{ item.label }}</span>
 
             <!-- Active indicator -->
@@ -61,28 +60,42 @@ interface NavItem { label: string; icon: string; route: string; }
   `
 })
 export class SidebarComponent {
+  private sanitizer = inject(DomSanitizer);
+
+  private svg(content: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:100%;height:100%">${content}</svg>`
+    );
+  }
+
   navItems: NavItem[] = [
     {
       label: 'POS',
       route: '/pos',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-               <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-             </svg>`
+      icon: this.svg(`
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+        <line x1="3" x2="21" y1="6" y2="6"/>
+        <path d="M16 10a4 4 0 0 1-8 0"/>
+      `)
     },
     {
       label: 'Products',
       route: '/products',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-               <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
-               <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
-             </svg>`
+      icon: this.svg(`
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      `)
     },
     {
       label: 'Categories',
       route: '/categories',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-               <circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-             </svg>`
+      icon: this.svg(`
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      `)
     }
   ];
 }
