@@ -7,9 +7,13 @@ export class CartService {
 
   items = signal<CartItem[]>(this.loadFromSession());
 
+  cartDiscountType  = signal<'percentage' | 'fixed' | null>(null);
+  cartDiscountValue = signal<number | null>(null);
+  cartDiscountDesc  = signal<string | null>(null);
+
   count = computed(() => this.items().reduce((sum, i) => sum + i.quantity, 0));
 
-  total = computed(() =>
+  subtotal = computed(() =>
     this.items().reduce((sum, i) => {
       const linePrice = (i.productPrice + (i.variant.priceAdjustment ?? 0)) * i.quantity;
       let discount = 0;
@@ -21,6 +25,28 @@ export class CartService {
       return sum + linePrice - discount;
     }, 0)
   );
+
+  cartDiscountAmount = computed(() => {
+    const sub = this.subtotal();
+    const type = this.cartDiscountType();
+    const val  = this.cartDiscountValue();
+    if (!type || !val) return 0;
+    return type === 'percentage' ? sub * (val / 100) : val;
+  });
+
+  total = computed(() => Math.max(0, this.subtotal() - this.cartDiscountAmount()));
+
+  setCartDiscount(type: 'percentage' | 'fixed', value: number, desc?: string): void {
+    this.cartDiscountType.set(type);
+    this.cartDiscountValue.set(value);
+    this.cartDiscountDesc.set(desc ?? null);
+  }
+
+  removeCartDiscount(): void {
+    this.cartDiscountType.set(null);
+    this.cartDiscountValue.set(null);
+    this.cartDiscountDesc.set(null);
+  }
 
   add(product: Product, variant: ProductVariant, quantity = 1): void {
     const key = `${product.id}-${variant.id}`;
@@ -68,6 +94,19 @@ export class CartService {
     this.persist();
   }
 
+  addRaw(item: CartItem): void {
+    this.items.update(list => {
+      const idx = list.findIndex(i => i.id === item.id);
+      if (idx >= 0) {
+        const updated = [...list];
+        updated[idx] = item;
+        return updated;
+      }
+      return [...list, item];
+    });
+    this.persist();
+  }
+
   remove(id: string): void {
     this.items.update(list => list.filter(i => i.id !== id));
     this.persist();
@@ -75,6 +114,7 @@ export class CartService {
 
   clear(): void {
     this.items.set([]);
+    this.removeCartDiscount();
     sessionStorage.removeItem(this.STORAGE_KEY);
   }
 
