@@ -1,5 +1,7 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, signal, computed } from '@angular/core';
+import { Router, NavigationEnd, RouterOutlet } from '@angular/router';
+import { filter, map, startWith } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { HeaderComponent } from '../header/header.component';
 
@@ -25,8 +27,10 @@ import { HeaderComponent } from '../header/header.component';
 
       <!-- Main content -->
       <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <app-header (menuToggle)="toggleSidebar()" />
-        <main class="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+        @if (!isPOS()) {
+          <app-header (menuToggle)="toggleSidebar()" />
+        }
+        <main [class]="isPOS() ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6'">
           <router-outlet />
         </main>
       </div>
@@ -37,4 +41,15 @@ import { HeaderComponent } from '../header/header.component';
 export class ShellComponent {
   sidebarOpen = signal(false);
   toggleSidebar() { this.sidebarOpen.update(v => !v); }
+
+  private router = inject(Router);
+  private url = toSignal(
+    this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd),
+      map(e => (e as NavigationEnd).urlAfterRedirects),
+      startWith(this.router.url)
+    ),
+    { initialValue: this.router.url }
+  );
+  isPOS = computed(() => (this.url() ?? '').includes('/pos'));
 }

@@ -26,8 +26,8 @@ public class ProductRepository : Repository<Product>, IProductRepository
             q = q.Where(p =>
                 p.Name.ToLower().Contains(t) ||
                 p.SKU.ToLower().Contains(t) ||
-            (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(t)) ||
-            p.Variants.Any(x => !string.IsNullOrEmpty(x.Barcode) && x.Barcode.ToLower().Contains(t)) ||
+               (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(t)) ||
+               p.Variants.Any(x => !string.IsNullOrEmpty(x.Barcode) && x.Barcode.ToLower().Contains(t)) ||
                 (p.Category != null && p.Category.Name.ToLower().Contains(t)));
         }
         return await q.OrderByDescending(p => p.CreatedAt).ToListAsync();
@@ -49,25 +49,25 @@ public class ProductRepository : Repository<Product>, IProductRepository
         // 1. Snapshot new child data as fresh (untracked) objects before touching the change tracker
         var newSizes = entity.Sizes.Select(s => new ProductSize
         {
-            Size      = s.Size,
+            Size = s.Size,
             ProductId = entity.Id
         }).ToList();
 
         var newColors = entity.Colors.Select(c => new ProductColor
         {
-            Color     = c.Color,
+            Color = c.Color,
             ProductId = entity.Id
         }).ToList();
 
         var newVariants = entity.Variants.Select(v => new ProductVariant
         {
-            Size            = v.Size,
-            Color           = v.Color,
-            SKU             = v.SKU,
-            Barcode         = v.Barcode,
-            Stock           = v.Stock,
+            Size = v.Size,
+            Color = v.Color,
+            SKU = v.SKU,
+            Barcode = v.Barcode,
+            Stock = v.Stock,
             PriceAdjustment = v.PriceAdjustment,
-            ProductId       = entity.Id
+            ProductId = entity.Id
         }).ToList();
 
         // 2. Detach everything — clean slate so no temporary-Id conflicts
@@ -75,29 +75,29 @@ public class ProductRepository : Repository<Product>, IProductRepository
             entry.State = EntityState.Detached;
 
         // 3. Bulk-delete old children directly via SQL (bypasses change tracker entirely)
-        await _db.Set<ProductSize>()   .Where(s => s.ProductId == entity.Id).ExecuteDeleteAsync();
-        await _db.Set<ProductColor>()  .Where(c => c.ProductId == entity.Id).ExecuteDeleteAsync();
+        await _db.Set<ProductSize>().Where(s => s.ProductId == entity.Id).ExecuteDeleteAsync();
+        await _db.Set<ProductColor>().Where(c => c.ProductId == entity.Id).ExecuteDeleteAsync();
         await _db.Set<ProductVariant>().Where(v => v.ProductId == entity.Id).ExecuteDeleteAsync();
 
         // 4. Clear nav collections before re-attaching so EF doesn't auto-insert them again
-        entity.Sizes    = [];
-        entity.Colors   = [];
+        entity.Sizes = [];
+        entity.Colors = [];
         entity.Variants = [];
 
         // 5. Re-attach entity and mark scalar fields as modified
         _db.Entry(entity).State = EntityState.Modified;
 
         // 6. Add new children
-        await _db.Set<ProductSize>()   .AddRangeAsync(newSizes);
-        await _db.Set<ProductColor>()  .AddRangeAsync(newColors);
+        await _db.Set<ProductSize>().AddRangeAsync(newSizes);
+        await _db.Set<ProductColor>().AddRangeAsync(newColors);
         await _db.Set<ProductVariant>().AddRangeAsync(newVariants);
 
         await _db.SaveChangesAsync();
 
         // Restore saved collections (with DB-assigned IDs) back onto entity
         // so callers can build DTOs without a second DB round-trip
-        entity.Sizes    = newSizes;
-        entity.Colors   = newColors;
+        entity.Sizes = newSizes;
+        entity.Colors = newColors;
         entity.Variants = newVariants;
     }
 }
