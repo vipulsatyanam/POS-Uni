@@ -10,11 +10,255 @@ import { ToastService } from '../../core/services/toast.service';
 import { CartItem, Product } from '../../core/models/product.model';
 import { environment } from '../../../environments/environment';
 
+interface Payment { method: string; amount: number; date: Date; }
+
 @Component({
   selector: 'app-pos',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
+    <!-- ══════════════════════════════════════════════════════════════════════
+         CHECKOUT MODE
+    ══════════════════════════════════════════════════════════════════════ -->
+    @if (checkoutMode()) {
+      <div class="flex flex-col lg:flex-row gap-3 lg:gap-4 min-h-0 lg:h-[calc(100dvh-3.5rem-3rem)]">
+
+        <!-- LEFT: Order Summary -->
+        <div class="flex flex-col bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden lg:flex-1 lg:min-h-0">
+
+          <!-- Header -->
+          <div class="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 shrink-0">
+            <button
+              class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors"
+              (click)="exitCheckout()"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <span class="font-bold text-slate-900 text-lg">Sale</span>
+          </div>
+
+          <!-- Items list -->
+          <div class="overflow-y-auto lg:flex-1 max-h-[35vh] lg:max-h-none">
+            @for (item of cartSvc.items(); track item.id) {
+              <div class="flex items-start gap-3 px-5 py-3.5 border-b border-slate-50">
+                <span class="text-sm font-semibold text-slate-500 w-5 shrink-0 mt-0.5 text-right">{{ item.quantity }}</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-900">{{ item.productName }}</p>
+                  <p class="text-xs text-slate-400 mt-0.5">
+                    SKU: {{ item.variant.sku }}@if (item.variant.size) { | Size {{ item.variant.size }}}@if (item.variant.color) { | {{ item.variant.color }}}
+                  </p>
+                </div>
+                <span class="text-sm font-semibold text-slate-900 shrink-0">{{ getItemBasePrice(item) * item.quantity | currency }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Totals block -->
+          <div class="px-5 py-4 border-t border-slate-200 bg-white shrink-0 space-y-2.5">
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-500">Subtotal</span>
+              <span class="text-slate-700">{{ subtotal() | currency }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-500">Tax GST 10%</span>
+              <span class="text-slate-700">{{ gst() | currency }}</span>
+            </div>
+            <div class="flex justify-between items-baseline border-t border-slate-200 pt-2.5">
+              <span class="font-bold text-slate-900 text-sm uppercase tracking-wide">
+                SALE TOTAL
+                <span class="font-normal text-xs text-slate-400 normal-case ml-1">{{ cartSvc.count() }} item{{ cartSvc.count() !== 1 ? 's' : '' }}</span>
+              </span>
+              <span class="font-bold text-slate-900 text-lg">{{ saleTotal() | currency }}</span>
+            </div>
+            @for (pmt of payments(); track $index) {
+              <div class="flex justify-between items-start border-t border-slate-100 pt-2">
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">{{ pmt.method }}</p>
+                  <p class="text-xs text-slate-400">{{ pmt.date | date:'dd MMM yyyy, hh:mm a' }}</p>
+                </div>
+                <span class="text-sm font-semibold text-slate-700">{{ pmt.amount | currency }}</span>
+              </div>
+            }
+            <div class="flex justify-between items-baseline border-t border-slate-200 pt-2.5">
+              <span class="font-bold text-slate-900 text-sm uppercase tracking-wide">TO PAY</span>
+              <span class="font-bold text-slate-900 text-lg">{{ remaining() | currency }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Payment Panel -->
+        <div class="lg:w-[26rem] lg:shrink-0 flex flex-col bg-white rounded-xl border border-slate-200 shadow-card">
+          <div class="p-5 sm:p-6 flex flex-col gap-4">
+
+            <div>
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">AMOUNT TO PAY</p>
+              <div class="relative border-2 border-slate-200 focus-within:border-brand-500 rounded-xl transition-colors">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-3xl font-bold text-slate-400 pointer-events-none select-none">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full pl-10 pr-5 py-4 text-4xl font-bold text-slate-900 focus:outline-none bg-transparent rounded-xl"
+                  [value]="amountToPayStr()"
+                  (focus)="$any($event.target).select()"
+                  (input)="amountToPayStr.set($any($event.target).value)"
+                />
+              </div>
+              <p class="text-xs text-slate-400 mt-2">Edit to make partial payment</p>
+            </div>
+
+            <!-- Cash / Eftpos buttons -->
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                class="py-6 sm:py-7 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-xl rounded-xl transition-all"
+                (click)="openCashModal()"
+              >Cash</button>
+              <button
+                class="py-6 sm:py-7 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-xl rounded-xl transition-all"
+                (click)="confirmEftposPayment()"
+              >Eftpos</button>
+            </div>
+
+            <!-- Other -->
+            <button class="w-full flex items-center justify-between px-4 py-3.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+              <span class="text-sm font-medium text-slate-600">Other</span>
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Cash Payment Modal ──────────────────────────────────────────── -->
+      @if (cashModal()) {
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" (click)="$event.stopPropagation()">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-lg font-bold text-slate-900">Cash Payment</h2>
+              <button
+                class="w-9 h-9 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
+                (click)="cashModal.set(false)"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div class="text-center mb-6">
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">AMOUNT TO PAY</p>
+              <p class="text-4xl font-bold text-slate-900">{{ cashAmountDue() | currency }}</p>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm text-slate-600 mb-2">Amount Given by Customer</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="0.00"
+                class="w-full border-2 rounded-xl px-5 py-4 text-2xl font-semibold focus:outline-none transition-colors"
+                [class.border-brand-500]="cashGiven() > 0"
+                [class.border-slate-200]="cashGiven() <= 0"
+                [value]="cashGiven() > 0 ? cashGiven() : ''"
+                (input)="cashGiven.set(+$any($event.target).value || 0)"
+              />
+            </div>
+            <div class="bg-slate-50 rounded-xl py-4 text-center mb-6">
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">CHANGE TO GIVE</p>
+              <p class="text-3xl font-bold text-green-600">{{ cashChange() | currency }}</p>
+            </div>
+            <div class="flex gap-3">
+              <button
+                class="flex-1 py-4 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                (click)="cashModal.set(false)"
+              >Cancel</button>
+              <button
+                class="flex-1 py-4 rounded-xl font-bold text-white transition-colors"
+                [class.bg-blue-600]="cashCanComplete()"
+                [class.hover:bg-blue-700]="cashCanComplete()"
+                [class.bg-brand-200]="!cashCanComplete()"
+                [class.cursor-not-allowed]="!cashCanComplete()"
+                (click)="confirmCashPayment()"
+              >Done</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ── Sale Complete Modal ─────────────────────────────────────────── -->
+      @if (saleComplete()) {
+        <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6 sm:p-8 overflow-y-auto max-h-[95dvh]">
+            <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-center text-slate-900 mb-1">Sale Complete</h2>
+            <p class="text-sm text-slate-500 text-center mb-6">Payment received successfully</p>
+            <div class="border-t border-slate-100 pt-5 mt-1">
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 text-center mb-1">SEND RECEIPT</p>
+              <p class="text-sm italic text-orange-500 text-center mb-5">"Would you like the receipt sent to your phone?"</p>
+              <!-- Print -->
+              <div class="flex items-center gap-3 p-4 border border-slate-200 rounded-xl mb-3">
+                <svg class="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                        d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/>
+                </svg>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold text-slate-900">Print</p>
+                  <p class="text-xs text-slate-400">Auto-print disabled</p>
+                </div>
+                <button class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-lg transition-colors" (click)="printReceipt()">Print</button>
+              </div>
+              <!-- SMS -->
+              <div class="flex items-start gap-3 p-4 border border-slate-200 rounded-xl mb-3">
+                <svg class="w-5 h-5 text-slate-400 shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                </svg>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-900 mb-2">SMS</p>
+                  <input
+                    type="tel"
+                    placeholder="04XX XXX XXX"
+                    class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                    [value]="receiptPhone()"
+                    (input)="receiptPhone.set($any($event.target).value)"
+                  />
+                </div>
+                <button class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-lg transition-colors mt-7 shrink-0">Send</button>
+              </div>
+              <!-- Email -->
+              <div class="flex items-start gap-3 p-4 border border-slate-200 rounded-xl mb-5">
+                <svg class="w-5 h-5 text-slate-400 shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-900 mb-2">Email</p>
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                    [value]="receiptEmail()"
+                    (input)="receiptEmail.set($any($event.target).value)"
+                  />
+                </div>
+                <button class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-lg transition-colors mt-7 shrink-0">Send</button>
+              </div>
+            </div>
+            <button
+              class="w-full py-4 bg-brand-600 hover:bg-brand-700 active:scale-[0.99] text-white font-bold text-base rounded-xl transition-all"
+              (click)="nextSale()"
+            >Next Sale</button>
+          </div>
+        </div>
+      }
+
+    } @else {
     <div class="flex flex-col h-full">
 
       <!-- ── POS Header: Park Sale / Retrieve Sale / More options ────────── -->
@@ -375,7 +619,7 @@ import { environment } from '../../../environments/environment';
         <button
           class="bg-blue-500 text-white px-4 py-5 rounded-lg w-full hover:bg-blue-600 transition-colors mt-3 mb-3 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
           [disabled]="cartSvc.items().length === 0"
-          (click)="checkout()"
+          (click)="enterCheckout()"
         >
           <span class="text-base font-semibold">Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})</span>
           <span class="text-base font-semibold">{{ cartSvc.total() | currency }}</span>
@@ -384,6 +628,7 @@ import { environment } from '../../../environments/environment';
 
       </div><!-- end two-column panels -->
     </div><!-- end outer flex-col -->
+    }<!-- end @else (normal POS mode) -->
 
     <!-- ── Work Clothes Modal ────────────────────────────────────────────── -->
     @if (workClothesModal()) {
@@ -1222,6 +1467,38 @@ export class PosComponent implements OnInit, OnDestroy {
   discountValueInput = signal('');
   discountDesc       = signal('');
 
+  // ── Checkout / Payment ─────────────────────────────────────────────────
+  checkoutMode   = signal(false);
+  payments       = signal<Payment[]>([]);
+  amountToPayStr = signal('');
+
+  // Cash modal
+  cashModal = signal(false);
+  cashGiven = signal(0);
+
+  // Sale complete
+  saleComplete  = signal(false);
+  receiptPhone  = signal('');
+  receiptEmail  = signal('');
+
+  // ── Checkout computed values ───────────────────────────────────────────
+  saleTotal  = computed(() => this.cartSvc.total());
+  subtotal   = computed(() => this.saleTotal() / 1.1);
+  gst        = computed(() => this.saleTotal() - this.subtotal());
+  totalPaid  = computed(() => this.payments().reduce((s, p) => s + p.amount, 0));
+  remaining  = computed(() => Math.max(0, this.saleTotal() - this.totalPaid()));
+
+  amountToPayValue = computed(() => {
+    const v = parseFloat(this.amountToPayStr());
+    const rem = this.remaining();
+    if (isNaN(v) || v <= 0) return rem;
+    return Math.min(v, rem);
+  });
+
+  cashAmountDue   = computed(() => Math.ceil(this.amountToPayValue()));
+  cashChange      = computed(() => Math.max(0, this.cashGiven() - this.cashAmountDue()));
+  cashCanComplete = computed(() => this.cashGiven() >= this.cashAmountDue());
+
   groupedProducts = computed(() => {
     const map = new Map<string, Product[]>();
     for (const p of this.products()) {
@@ -1546,8 +1823,132 @@ export class PosComponent implements OnInit, OnDestroy {
     this.discountModal.set(false);
   }
 
-  checkout() {
-    this.toast.info('Checkout coming soon');
+  // ── Checkout flow ──────────────────────────────────────────────────────
+
+  enterCheckout() {
+    this.payments.set([]);
+    this.amountToPayStr.set(this.saleTotal().toFixed(2));
+    this.checkoutMode.set(true);
+  }
+
+  exitCheckout() {
+    this.checkoutMode.set(false);
+    this.payments.set([]);
+    this.saleComplete.set(false);
+  }
+
+  openCashModal() {
+    this.cashGiven.set(0);
+    this.cashModal.set(true);
+  }
+
+  confirmCashPayment() {
+    if (!this.cashCanComplete()) return;
+    this.recordPayment('Cash', this.cashAmountDue());
+    this.cashModal.set(false);
+    this.cashGiven.set(0);
+  }
+
+  confirmEftposPayment() {
+    this.recordPayment('Eftpos', this.amountToPayValue());
+  }
+
+  private recordPayment(method: string, amount: number) {
+    this.payments.update(p => [...p, { method, amount, date: new Date() }]);
+    if (this.remaining() <= 0.005) {
+      this.saleComplete.set(true);
+    } else {
+      this.amountToPayStr.set(this.remaining().toFixed(2));
+    }
+  }
+
+  nextSale() {
+    this.cartSvc.clear();
+    this.saleComplete.set(false);
+    this.checkoutMode.set(false);
+    this.payments.set([]);
+    this.receiptPhone.set('');
+    this.receiptEmail.set('');
+  }
+
+  printReceipt() {
+    const m   = (n: number) => '$' + n.toFixed(2);
+    const now = this.payments().length ? this.payments()[0].date : new Date();
+    const receiptNo = Date.now().toString().slice(-8);
+    const dateStr   = now.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeStr   = now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+
+    const itemRows = this.cartSvc.items().map(item => {
+      const price  = this.getItemBasePrice(item) * item.quantity;
+      const detail = [item.variant.size, item.variant.color].filter(Boolean).join(' / ');
+      const disc   = item.discountType && item.discountValue ? this.getItemDiscount(item) : 0;
+      return `
+        <tr>
+          <td>${item.productName}${detail ? `<br><span class="sm">${detail}</span>` : ''}
+              ${disc > 0 ? `<br><span class="sm disc">Discount: -${m(disc)}</span>` : ''}</td>
+          <td class="center">${item.quantity}</td>
+          <td class="right">${m(price)}</td>
+        </tr>`;
+    }).join('');
+
+    const pmtRows = this.payments().map(p =>
+      `<tr><td>Payment (${p.method})</td><td class="right">${m(p.amount)}</td></tr>`
+    ).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Courier New',Courier,monospace;font-size:9.5px;width:72mm;padding:5mm 4mm;color:#000}
+  .logo{font-family:'Pacifico',cursive;font-size:22px;text-align:center;margin-bottom:5px}
+  .center{text-align:center}
+  .right{text-align:right}
+  .store{font-size:8.5px;text-align:center;line-height:1.55}
+  hr{border:none;border-top:1px dashed #888;margin:5px 0}
+  .meta{font-size:8.5px;margin:2px 0}
+  table{width:100%;border-collapse:collapse;font-size:9px}
+  th{font-weight:bold;padding:1px 0;border-bottom:1px dashed #888}
+  th:nth-child(2){text-align:center}th:last-child{text-align:right}
+  td{padding:2px 0;vertical-align:top}
+  td:nth-child(2){text-align:center}td:last-child{text-align:right}
+  .sm{font-size:7.5px;color:#555}
+  .disc{color:#000}
+  .totals td:last-child{text-align:right}
+  .bold td{font-weight:bold}
+  .footer{text-align:center;font-size:8.5px;margin-top:5px}
+  @media print{@page{size:80mm auto;margin:0}body{width:80mm;padding:4mm}}
+</style></head><body>
+<div class="logo">Sauers</div>
+<div class="store">
+  202 John St, Maryborough QLD 4650<br>
+  2/143 Old Maryborough Rd, Pialba QLD 4655<br>
+  (07) 4122 3990&nbsp;&nbsp;|&nbsp;&nbsp;(07) 4128 1038<br>
+  accounts@saueruniforms.com.au
+</div>
+<hr>
+<div class="meta">Receipt:&nbsp;&nbsp;${receiptNo}</div>
+<div class="meta">Date:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${dateStr}</div>
+<div class="meta">Time:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${timeStr}</div>
+<hr>
+<table>
+  <thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead>
+  <tbody>${itemRows}</tbody>
+</table>
+<hr>
+<table class="totals">
+  <tr><td>Subtotal (ex GST)</td><td class="right">${m(this.subtotal())}</td></tr>
+  <tr><td>GST (10%)</td><td class="right">${m(this.gst())}</td></tr>
+  <tr class="bold"><td>TOTAL</td><td class="right">${m(this.saleTotal())}</td></tr>
+  ${pmtRows}
+</table>
+<hr>
+<div class="footer">Thank you for your purchase!</div>
+<script>document.fonts.ready.then(()=>{window.print();})</script>
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'width=420,height=600,toolbar=0,menubar=0');
   }
 
   isInCart(productId: number): boolean {
