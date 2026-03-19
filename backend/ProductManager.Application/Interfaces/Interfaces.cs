@@ -50,3 +50,12 @@ public interface ICategoryService
     Task<IEnumerable<CategoryDto>> GetCategoriesAsync();
     Task<CategoryDto> CreateCategoryAsync(CreateCategoryDto dto);
 }
+
+// ─── Auth Service ─────────────────────────────────────────────────────────────
+
+public interface IAuthService
+{
+    Task<AuthResponseDto> RegisterTenantAsync(RegisterTenantDto dto);
+    Task<AuthResponseDto> LoginAsync(LoginDto dto);
+    Task<UserInfoDto> GetCurrentUserAsync(string userId);
+}

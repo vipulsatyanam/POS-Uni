@@ -9,6 +9,7 @@ public class Product : BaseEntity
     public string? Barcode { get; set; }
     public decimal Price { get; set; }
     public string? ImageUrl { get; set; }
+    public int TenantId { get; set; }
     public int? CategoryId { get; set; }
     public Category? Category { get; set; }
     public ICollection<ProductSize> Sizes { get; set; } = new List<ProductSize>();

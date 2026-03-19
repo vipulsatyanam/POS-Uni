@@ -7,7 +7,13 @@ namespace ProductManager.Application.Services;
 public class CategoryService : ICategoryService
 {
     private readonly ICategoryRepository _repo;
-    public CategoryService(ICategoryRepository repo) => _repo = repo;
+    private readonly ITenantContext      _tenantContext;
+
+    public CategoryService(ICategoryRepository repo, ITenantContext tenantContext)
+    {
+        _repo          = repo;
+        _tenantContext = tenantContext;
+    }
 
     public async Task<IEnumerable<CategoryDto>> GetCategoriesAsync()
         => (await _repo.GetAllOrderedAsync()).Select(c => new CategoryDto
@@ -17,7 +23,12 @@ public class CategoryService : ICategoryService
 
     public async Task<CategoryDto> CreateCategoryAsync(CreateCategoryDto dto)
     {
-        var cat = await _repo.AddAsync(new Category { Name = dto.Name, Description = dto.Description });
+        var cat = await _repo.AddAsync(new Category
+        {
+            TenantId    = _tenantContext.TenantId,
+            Name        = dto.Name,
+            Description = dto.Description
+        });
         return new CategoryDto { Id = cat.Id, Name = cat.Name, Description = cat.Description };
     }
 }

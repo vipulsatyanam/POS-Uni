@@ -8,11 +8,16 @@ public class ProductService : IProductService
 {
     private readonly IProductRepository  _repo;
     private readonly ICategoryRepository _categoryRepo;
+    private readonly ITenantContext      _tenantContext;
 
-    public ProductService(IProductRepository repo, ICategoryRepository categoryRepo)
+    public ProductService(
+        IProductRepository repo,
+        ICategoryRepository categoryRepo,
+        ITenantContext tenantContext)
     {
-        _repo = repo;
-        _categoryRepo = categoryRepo;
+        _repo          = repo;
+        _categoryRepo  = categoryRepo;
+        _tenantContext = tenantContext;
     }
 
     public async Task<IEnumerable<ProductDto>> GetProductsAsync(string? search = null)
@@ -29,13 +34,13 @@ public class ProductService : IProductService
         if (await _repo.SkuExistsAsync(dto.SKU))
             throw new InvalidOperationException($"SKU '{dto.SKU}' already exists.");
 
-        // Load category once (single PK lookup) so DTO has CategoryName without a re-fetch
         var category = dto.CategoryId.HasValue
             ? await _categoryRepo.GetByIdAsync(dto.CategoryId.Value)
             : null;
 
         var product = new Product
         {
+            TenantId   = _tenantContext.TenantId,
             Name       = dto.Name,
             SKU        = dto.SKU.ToUpper(),
             Barcode    = dto.Barcode,
@@ -48,8 +53,8 @@ public class ProductService : IProductService
             Variants   = BuildVariants(dto.SKU, dto.Sizes, dto.Colors, dto.VariantBarcodes)
         };
 
-        var created = await _repo.AddAsync(product); // EF sets all auto-generated IDs after save
-        return ToDto(created);                       // map from memory — no second round-trip
+        var created = await _repo.AddAsync(product);
+        return ToDto(created);
     }
 
     public async Task<ProductDto> UpdateProductAsync(int id, UpdateProductDto dto)
@@ -60,7 +65,6 @@ public class ProductService : IProductService
         if (await _repo.SkuExistsAsync(dto.SKU, id))
             throw new InvalidOperationException($"SKU '{dto.SKU}' already exists.");
 
-        // Load category once for DTO (single PK lookup)
         var category = dto.CategoryId.HasValue
             ? await _categoryRepo.GetByIdAsync(dto.CategoryId.Value)
             : null;
@@ -77,8 +81,8 @@ public class ProductService : IProductService
         product.Colors     = dto.Colors.Distinct().Select(c => new ProductColor { Color = c, ProductId = id }).ToList();
         product.Variants   = BuildVariants(dto.SKU, dto.Sizes, dto.Colors, dto.VariantBarcodes);
 
-        await _repo.UpdateAsync(product); // UpdateAsync restores Sizes/Colors/Variants with DB IDs
-        return ToDto(product);            // map from memory — no second round-trip
+        await _repo.UpdateAsync(product);
+        return ToDto(product);
     }
 
     public async Task DeleteProductAsync(int id)
@@ -94,7 +98,7 @@ public class ProductService : IProductService
         string baseSku, List<string> sizes, List<string> colors,
         List<VariantBarcodeDto> barcodes)
     {
-        var variants = new List<ProductVariant>();
+        var variants       = new List<ProductVariant>();
         var distinctSizes  = sizes.Distinct().Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
         var distinctColors = colors.Distinct().Where(c => !string.IsNullOrWhiteSpace(c)).ToList();
 

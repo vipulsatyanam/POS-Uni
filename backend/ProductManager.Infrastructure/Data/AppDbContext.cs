@@ -1,12 +1,22 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using ProductManager.Application.Interfaces;
 using ProductManager.Domain.Entities;
+using ProductManager.Infrastructure.Identity;
 
 namespace ProductManager.Infrastructure.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly ITenantContext _tenantContext;
 
+    public AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext tenantContext)
+        : base(options)
+    {
+        _tenantContext = tenantContext;
+    }
+
+    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<ProductSize> ProductSizes => Set<ProductSize>();
@@ -17,21 +27,43 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(mb);
 
-        // ── Category ─────────────────────────────────────────────────────────
+        // ── Tenant ───────────────────────────────────────────────────────────
+        mb.Entity<Tenant>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Slug).IsRequired().HasMaxLength(100);
+            e.HasIndex(x => x.Slug).IsUnique();
+            e.Property(x => x.Plan).HasMaxLength(50).HasDefaultValue("free");
+        });
+
+        // ── ApplicationUser ──────────────────────────────────────────────────
+        mb.Entity<ApplicationUser>(e =>
+        {
+            e.Property(x => x.FirstName).HasMaxLength(100);
+            e.Property(x => x.LastName).HasMaxLength(100);
+            e.Property(x => x.TenantRole).HasMaxLength(50).HasDefaultValue("Staff");
+            e.HasIndex(x => x.TenantId);
+        });
+
+        // ── Category (tenant-scoped) ──────────────────────────────────────────
         mb.Entity<Category>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).IsRequired().HasMaxLength(100);
             e.Property(x => x.Description).HasMaxLength(500);
+            e.HasIndex(x => x.TenantId);
+            e.HasQueryFilter(c => c.TenantId == _tenantContext.TenantId);
         });
 
-        // ── Product ──────────────────────────────────────────────────────────
+        // ── Product (tenant-scoped) ──────────────────────────────────────────
         mb.Entity<Product>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).IsRequired().HasMaxLength(200);
             e.Property(x => x.SKU).IsRequired().HasMaxLength(100);
-            e.HasIndex(x => x.SKU).IsUnique();
+            // Per-tenant SKU uniqueness (same SKU allowed across different tenants)
+            e.HasIndex(x => new { x.TenantId, x.SKU }).IsUnique();
             e.Property(x => x.Barcode).HasMaxLength(100);
             e.Property(x => x.Price).HasColumnType("decimal(18,2)");
             e.Property(x => x.ImageUrl).HasMaxLength(500);
@@ -40,6 +72,9 @@ public class AppDbContext : DbContext
              .WithMany(c => c.Products)
              .HasForeignKey(x => x.CategoryId)
              .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.TenantId);
+            e.HasQueryFilter(p => p.TenantId == _tenantContext.TenantId);
         });
 
         // ── ProductSize ───────────────────────────────────────────────────────
@@ -78,14 +113,5 @@ public class AppDbContext : DbContext
              .HasForeignKey(x => x.ProductId)
              .OnDelete(DeleteBehavior.Cascade);
         });
-
-        // ── Seed Categories ───────────────────────────────────────────────────
-        mb.Entity<Category>().HasData(
-            new Category { Id = 1, Name = "Electronics",  Description = "Gadgets and devices",         CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 2, Name = "Clothing",     Description = "Apparel and fashion",          CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 3, Name = "Footwear",     Description = "Shoes and boots",              CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 4, Name = "Accessories",  Description = "Bags, belts, and more",        CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 5, Name = "Food & Bev",   Description = "Food and beverage products",   CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
-        );
     }
 }
