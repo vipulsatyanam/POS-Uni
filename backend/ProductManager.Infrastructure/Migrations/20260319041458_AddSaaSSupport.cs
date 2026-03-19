@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,6 +11,25 @@ namespace ProductManager.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // ── 1. New top-level tables ──────────────────────────────────────────
+            migrationBuilder.CreateTable(
+                name: "Tenants",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Slug = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Plan = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "free"),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tenants", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -54,41 +73,7 @@ namespace ProductManager.Infrastructure.Migrations
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "Categories",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    TenantId = table.Column<int>(type: "int", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Categories", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Tenants",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    Slug = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Plan = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "free"),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Tenants", x => x.Id);
-                });
-
+            // ── 2. ASP.NET Identity join / child tables ──────────────────────────
             migrationBuilder.CreateTable(
                 name: "AspNetRoleClaims",
                 columns: table => new
@@ -195,103 +180,48 @@ namespace ProductManager.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "Products",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    SKU = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Barcode = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    ImageUrl = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    TenantId = table.Column<int>(type: "int", nullable: false),
-                    CategoryId = table.Column<int>(type: "int", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Products", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Products_Categories_CategoryId",
-                        column: x => x.CategoryId,
-                        principalTable: "Categories",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                });
+            // ── 3. Add TenantId to existing tables ───────────────────────────────
+            migrationBuilder.AddColumn<int>(
+                name: "TenantId",
+                table: "Categories",
+                type: "int",
+                nullable: false,
+                defaultValue: 0);
 
-            migrationBuilder.CreateTable(
-                name: "ProductColors",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ProductId = table.Column<int>(type: "int", nullable: false),
-                    Color = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ProductColors", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ProductColors_Products_ProductId",
-                        column: x => x.ProductId,
-                        principalTable: "Products",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            migrationBuilder.AddColumn<int>(
+                name: "TenantId",
+                table: "Products",
+                type: "int",
+                nullable: false,
+                defaultValue: 0);
 
-            migrationBuilder.CreateTable(
-                name: "ProductSizes",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ProductId = table.Column<int>(type: "int", nullable: false),
-                    Size = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ProductSizes", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ProductSizes_Products_ProductId",
-                        column: x => x.ProductId,
-                        principalTable: "Products",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            // ── 4. Swap Products SKU index: drop plain unique, add tenant-scoped ─
+            migrationBuilder.DropIndex(
+                name: "IX_Products_SKU",
+                table: "Products");
 
-            migrationBuilder.CreateTable(
-                name: "ProductVariants",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ProductId = table.Column<int>(type: "int", nullable: false),
-                    Size = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    Color = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    SKU = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
-                    Barcode = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    PriceAdjustment = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    Stock = table.Column<int>(type: "int", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ProductVariants", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ProductVariants_Products_ProductId",
-                        column: x => x.ProductId,
-                        principalTable: "Products",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_TenantId_SKU",
+                table: "Products",
+                columns: new[] { "TenantId", "SKU" },
+                unique: true);
+
+            // ── 5. Additional indexes ─────────────────────────────────────────────
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_TenantId",
+                table: "Products",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Categories_TenantId",
+                table: "Categories",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tenants_Slug",
+                table: "Tenants",
+                column: "Slug",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -336,91 +266,33 @@ namespace ProductManager.Infrastructure.Migrations
                 column: "NormalizedUserName",
                 unique: true,
                 filter: "[NormalizedUserName] IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Categories_TenantId",
-                table: "Categories",
-                column: "TenantId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProductColors_ProductId",
-                table: "ProductColors",
-                column: "ProductId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Products_CategoryId",
-                table: "Products",
-                column: "CategoryId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Products_TenantId",
-                table: "Products",
-                column: "TenantId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Products_TenantId_SKU",
-                table: "Products",
-                columns: new[] { "TenantId", "SKU" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProductSizes_ProductId",
-                table: "ProductSizes",
-                column: "ProductId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProductVariants_ProductId",
-                table: "ProductVariants",
-                column: "ProductId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Tenants_Slug",
-                table: "Tenants",
-                column: "Slug",
-                unique: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "AspNetRoleClaims");
+            migrationBuilder.DropTable(name: "AspNetRoleClaims");
+            migrationBuilder.DropTable(name: "AspNetUserClaims");
+            migrationBuilder.DropTable(name: "AspNetUserLogins");
+            migrationBuilder.DropTable(name: "AspNetUserRoles");
+            migrationBuilder.DropTable(name: "AspNetUserTokens");
+            migrationBuilder.DropTable(name: "AspNetRoles");
+            migrationBuilder.DropTable(name: "AspNetUsers");
+            migrationBuilder.DropTable(name: "Tenants");
 
-            migrationBuilder.DropTable(
-                name: "AspNetUserClaims");
+            migrationBuilder.DropIndex(name: "IX_Products_TenantId_SKU", table: "Products");
+            migrationBuilder.DropIndex(name: "IX_Products_TenantId",     table: "Products");
+            migrationBuilder.DropIndex(name: "IX_Categories_TenantId",   table: "Categories");
 
-            migrationBuilder.DropTable(
-                name: "AspNetUserLogins");
+            migrationBuilder.DropColumn(name: "TenantId", table: "Products");
+            migrationBuilder.DropColumn(name: "TenantId", table: "Categories");
 
-            migrationBuilder.DropTable(
-                name: "AspNetUserRoles");
-
-            migrationBuilder.DropTable(
-                name: "AspNetUserTokens");
-
-            migrationBuilder.DropTable(
-                name: "ProductColors");
-
-            migrationBuilder.DropTable(
-                name: "ProductSizes");
-
-            migrationBuilder.DropTable(
-                name: "ProductVariants");
-
-            migrationBuilder.DropTable(
-                name: "Tenants");
-
-            migrationBuilder.DropTable(
-                name: "AspNetRoles");
-
-            migrationBuilder.DropTable(
-                name: "AspNetUsers");
-
-            migrationBuilder.DropTable(
-                name: "Products");
-
-            migrationBuilder.DropTable(
-                name: "Categories");
+            // Restore original plain-unique SKU index
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_SKU",
+                table: "Products",
+                column: "SKU",
+                unique: true);
         }
     }
 }
