@@ -196,9 +196,15 @@ namespace ProductManager.Infrastructure.Migrations
                 defaultValue: 0);
 
             // ── 4. Swap Products SKU index: drop plain unique, add tenant-scoped ─
-            migrationBuilder.DropIndex(
-                name: "IX_Products_SKU",
-                table: "Products");
+            // Drop conditionally — the index may not exist if DB was set up manually
+            migrationBuilder.Sql(@"
+                IF EXISTS (
+                    SELECT 1 FROM sys.indexes
+                    WHERE object_id = OBJECT_ID(N'dbo.Products')
+                      AND name = N'IX_Products_SKU'
+                )
+                DROP INDEX [IX_Products_SKU] ON [dbo].[Products];
+            ");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Products_TenantId_SKU",
@@ -287,12 +293,15 @@ namespace ProductManager.Infrastructure.Migrations
             migrationBuilder.DropColumn(name: "TenantId", table: "Products");
             migrationBuilder.DropColumn(name: "TenantId", table: "Categories");
 
-            // Restore original plain-unique SKU index
-            migrationBuilder.CreateIndex(
-                name: "IX_Products_SKU",
-                table: "Products",
-                column: "SKU",
-                unique: true);
+            // Restore original plain-unique SKU index (only if it doesn't already exist)
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (
+                    SELECT 1 FROM sys.indexes
+                    WHERE object_id = OBJECT_ID(N'dbo.Products')
+                      AND name = N'IX_Products_SKU'
+                )
+                CREATE UNIQUE INDEX [IX_Products_SKU] ON [dbo].[Products] ([SKU]);
+            ");
         }
     }
 }
