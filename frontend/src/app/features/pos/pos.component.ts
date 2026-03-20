@@ -427,7 +427,7 @@ interface Payment { method: string; amount: number; date: Date; }
       </div>
 
       <!-- ── RIGHT: Cart Panel ───────────────────────────────────────────── -->
-      <div class="w-full lg:w-[420px] shrink-0 flex flex-col lg:h-full lg:min-h-0">
+      <div class="w-full lg:w-[636px] shrink-0 flex flex-col lg:h-full lg:min-h-0">
 
         <!-- White card: Customer + Items + ADD row -->
         <div class="flex flex-col px-5 pt-4 border border-gray-200 bg-white rounded-xl shadow-sm flex-1 min-h-0 overflow-hidden">
@@ -594,8 +594,8 @@ interface Payment { method: string; amount: number; date: Date; }
           </div>
 
           <!-- ADD | Discount | Promo Code | Note -->
-          <div class="shrink-0 pb-3 border-t border-gray-100">
-            <div class="flex flex-nowrap justify-between items-center mt-3">
+          <div class="shrink-0 py-4 border-t border-gray-100">
+            <div class="flex flex-nowrap justify-between items-center">
               <h2 class="text-gray-800 font-bold">ADD</h2>
               <div class="flex items-center gap-x-5">
                 <p
@@ -617,7 +617,7 @@ interface Payment { method: string; amount: number; date: Date; }
 
         <!-- Tender button -->
         <button
-          class="bg-blue-500 text-white px-4 py-5 rounded-lg w-full hover:bg-blue-600 transition-colors mt-3 mb-3 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          class="bg-blue-500 text-white px-4 rounded-lg w-full hover:bg-blue-600 transition-colors mt-3 mb-3 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style="height:76px"
           [disabled]="cartSvc.items().length === 0"
           (click)="enterCheckout()"
         >
