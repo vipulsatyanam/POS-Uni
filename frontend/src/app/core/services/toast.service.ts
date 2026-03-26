@@ -11,10 +11,10 @@ export class ToastService {
   toasts = signal<Toast[]>([]);
   private next = 0;
 
-  show(type: Toast['type'], message: string) {
+  show(type: Toast['type'], message: string, duration = 4000) {
     const id = ++this.next;
     this.toasts.update(t => [...t, { id, type, message }]);
-    setTimeout(() => this.dismiss(id), 3500);
+    setTimeout(() => this.dismiss(id), duration);
   }
 
   dismiss(id: number) {

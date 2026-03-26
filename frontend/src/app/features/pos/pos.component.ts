@@ -7,6 +7,7 @@ import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
 import { ToastService } from '../../core/services/toast.service';
+import { EmailService } from '../../core/services/email.service';
 import { CartItem, Product } from '../../core/models/product.model';
 import { environment } from '../../../environments/environment';
 
@@ -15,174 +16,259 @@ interface Payment { method: string; amount: number; date: Date; }
 @Component({
   selector: 'app-pos',
   standalone: true,
+  host: { style: 'display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden' },
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <!-- ══════════════════════════════════════════════════════════════════════
          CHECKOUT MODE
     ══════════════════════════════════════════════════════════════════════ -->
     @if (checkoutMode()) {
-      <div class="flex flex-col lg:flex-row gap-3 lg:gap-4 min-h-0 lg:h-[calc(100dvh-3.5rem-3rem)]">
+      <div class="grid grid-cols-5 gap-5 pt-5 px-5">
 
-        <!-- LEFT: Order Summary -->
-        <div class="flex flex-col bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden lg:flex-1 lg:min-h-0">
+        <!-- LEFT: Order Summary (col-span-2) -->
+        <div class="col-span-2 flex flex-col bg-white rounded-xl overflow-hidden">
 
-          <!-- Header -->
-          <div class="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 shrink-0">
+          <!-- Back + Sale heading -->
+          <div class="flex items-center gap-2 px-8 pt-6 pb-4 shrink-0">
             <button
-              class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors"
+              class="flex items-center justify-center text-gray-800 hover:opacity-70 transition-opacity"
               (click)="exitCheckout()"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+              <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m14 8-4 4 4 4"/>
               </svg>
             </button>
-            <span class="font-bold text-slate-900 text-lg">Sale</span>
+            <h1 class="text-2xl font-bold text-gray-900">Sale</h1>
           </div>
 
           <!-- Items list -->
-          <div class="overflow-y-auto lg:flex-1 max-h-[35vh] lg:max-h-none">
+          <div class="px-8">
             @for (item of cartSvc.items(); track item.id) {
-              <div class="flex items-start gap-3 px-5 py-3.5 border-b border-slate-50">
-                <span class="text-sm font-semibold text-slate-500 w-5 shrink-0 mt-0.5 text-right">{{ item.quantity }}</span>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold text-slate-900">{{ item.productName }}</p>
-                  <p class="text-xs text-slate-400 mt-0.5">
-                    SKU: {{ item.variant.sku }}@if (item.variant.size) { | Size {{ item.variant.size }}}@if (item.variant.color) { | {{ item.variant.color }}}
-                  </p>
+              <div class="pb-2 border-b border-gray-100 mb-2">
+                <div class="flex justify-between items-start mb-1">
+                  <div class="flex gap-3 flex-1">
+                    <span class="text-xl font-semibold text-gray-900">{{ item.quantity }}</span>
+                    <div class="flex-1">
+                      <h3 class="text-xl font-medium text-gray-900 leading-tight">{{ item.productName }}</h3>
+                      <p class="text-base text-gray-500 mt-1">
+                        {{ item.variant.sku }}@if (item.variant.size) { · {{ item.variant.size }}}@if (item.variant.color) { · {{ item.variant.color }}}
+                      </p>
+                    </div>
+                  </div>
+                  <p class="text-xl font-semibold text-gray-900">{{ getItemBasePrice(item) * item.quantity | currency }}</p>
                 </div>
-                <span class="text-sm font-semibold text-slate-900 shrink-0">{{ getItemBasePrice(item) * item.quantity | currency }}</span>
               </div>
             }
           </div>
 
           <!-- Totals block -->
-          <div class="px-5 py-4 border-t border-slate-200 bg-white shrink-0 space-y-2.5">
-            <div class="flex justify-between text-sm">
-              <span class="text-slate-500">Subtotal</span>
-              <span class="text-slate-700">{{ subtotal() | currency }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-slate-500">Tax GST 10%</span>
-              <span class="text-slate-700">{{ gst() | currency }}</span>
-            </div>
-            <div class="flex justify-between items-baseline border-t border-slate-200 pt-2.5">
-              <span class="font-bold text-slate-900 text-sm uppercase tracking-wide">
-                SALE TOTAL
-                <span class="font-normal text-xs text-slate-400 normal-case ml-1">{{ cartSvc.count() }} item{{ cartSvc.count() !== 1 ? 's' : '' }}</span>
-              </span>
-              <span class="font-bold text-slate-900 text-lg">{{ saleTotal() | currency }}</span>
-            </div>
-            @for (pmt of payments(); track $index) {
-              <div class="flex justify-between items-start border-t border-slate-100 pt-2">
-                <div>
-                  <p class="text-sm font-semibold text-slate-800">{{ pmt.method }}</p>
-                  <p class="text-xs text-slate-400">{{ pmt.date | date:'dd MMM yyyy, hh:mm a' }}</p>
-                </div>
-                <span class="text-sm font-semibold text-slate-700">{{ pmt.amount | currency }}</span>
+          <div class="px-8 pb-5 shrink-0">
+            <!-- Subtotal / Tax -->
+            <div class="border-t border-gray-300 pt-6 space-y-3">
+              <div class="flex justify-between text-lg">
+                <span class="text-gray-600">Subtotal</span>
+                <span class="font-medium">{{ subtotal() | currency }}</span>
               </div>
-            }
-            <div class="flex justify-between items-baseline border-t border-slate-200 pt-2.5">
-              <span class="font-bold text-slate-900 text-sm uppercase tracking-wide">TO PAY</span>
-              <span class="font-bold text-slate-900 text-lg">{{ remaining() | currency }}</span>
+              <div class="flex justify-between text-lg">
+                <span class="text-gray-600">Tax GST 10%</span>
+                <span class="font-medium">{{ gst() | currency }}</span>
+              </div>
+            </div>
+            <!-- SALE TOTAL -->
+            <div class="border-t border-gray-300 mt-6 pt-4">
+              <div class="flex justify-between items-center mb-6">
+                <span class="text-2xl font-bold text-gray-900">SALE TOTAL
+                  <span class="text-base font-normal text-gray-500 ml-1">{{ cartSvc.count() }} item{{ cartSvc.count() !== 1 ? 's' : '' }}</span>
+                </span>
+                <span class="text-3xl font-bold text-gray-900">{{ saleTotal() | currency }}</span>
+              </div>
+              <!-- Partial payments -->
+              @if (payments().length > 0) {
+                <div class="mb-4 space-y-2">
+                  @for (pmt of payments(); track $index) {
+                    <div class="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-3">
+                      <div>
+                        <p class="font-medium text-gray-900">{{ pmt.method }}</p>
+                        <p class="text-sm text-gray-500">{{ pmt.date | date:'d MMM yyyy, hh:mm a' }}</p>
+                      </div>
+                      <span class="text-xl font-semibold text-gray-900">{{ pmt.amount | currency }}</span>
+                    </div>
+                  }
+                </div>
+              }
+              <!-- TO PAY -->
+              <div class="flex justify-between items-center py-4 border-t border-gray-300">
+                <span class="text-2xl font-bold text-gray-900">TO PAY</span>
+                <span class="text-3xl font-bold text-gray-900">{{ remaining() | currency }}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- RIGHT: Payment Panel -->
-        <div class="lg:w-[26rem] lg:shrink-0 flex flex-col bg-white rounded-xl border border-slate-200 shadow-card">
-          <div class="p-5 sm:p-6 flex flex-col gap-4">
+        <!-- RIGHT: Payment Panel (col-span-3) -->
+        <div class="col-span-3 flex flex-col gap-4">
 
-            <div>
-              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">AMOUNT TO PAY</p>
-              <div class="relative border-2 border-slate-200 focus-within:border-brand-500 rounded-xl transition-colors">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-3xl font-bold text-slate-400 pointer-events-none select-none">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  class="w-full pl-10 pr-5 py-4 text-4xl font-bold text-slate-900 focus:outline-none bg-transparent rounded-xl"
-                  [value]="amountToPayStr()"
-                  (focus)="$any($event.target).select()"
-                  (input)="amountToPayStr.set($any($event.target).value)"
-                />
+          <!-- Payment Options Card -->
+          <div class="flex flex-col px-8 pt-5 pb-5 border bg-white border-gray-200 rounded-xl shadow-xs">
+
+            <!-- Amount to Pay -->
+            <div class="flex-wrap mb-6">
+              <label class="block text-base font-semibold text-gray-700 mb-2">AMOUNT TO PAY</label>
+              <input
+                type="text"
+                class="w-full text-4xl font-bold text-left rounded-lg px-6 py-4 bg-white border-2 border-gray-300 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 cursor-text"
+                [value]="amountToPayStr() ? '$' + amountToPayStr() : ''"
+                (focus)="$any($event.target).select()"
+                (input)="setAmountToPay($any($event.target).value)"
+              />
+              <p class="text-base text-gray-500 pt-2">Edit to make partial payment</p>
+              @if (amountWarning()) {
+                <div class="bg-red-50 border border-red-200 text-sm text-red-800 rounded-lg p-4 mt-2" role="alert">
+                  <div class="flex">
+                    <svg class="shrink-0 size-4 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 8v4m0 4h.01"/>
+                    </svg>
+                    <div class="ms-2"><span class="text-sm font-medium">{{ amountWarning() }}</span></div>
+                    <div class="ps-3 ms-auto">
+                      <button type="button" class="inline-flex bg-red-50 rounded-lg p-1.5 text-red-500 hover:bg-red-100 focus:outline-none" (click)="amountWarning.set('')">
+                        <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Payment buttons -->
+            <div class="mb-4">
+              <!-- Cash / Eftpos -->
+              <div class="grid grid-cols-2 gap-3 mb-3">
+                <button
+                  class="py-10 px-4 text-xl font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  (click)="openCashModal()"
+                >Cash</button>
+                <button
+                  class="py-10 px-4 text-xl font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  (click)="confirmEftposPayment()"
+                >Eftpos</button>
               </div>
-              <p class="text-xs text-slate-400 mt-2">Edit to make partial payment</p>
+
+              <!-- Other (collapsible) -->
+              <div>
+                <button
+                  class="w-full flex items-center justify-between px-4 py-4 text-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition-colors"
+                  (click)="otherPaymentsOpen.set(!otherPaymentsOpen())"
+                >
+                  <span>Other</span>
+                  <svg class="w-5 h-5 transition-transform" [class.rotate-90]="otherPaymentsOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+                @if (otherPaymentsOpen()) {
+                  <div class="grid grid-cols-3 gap-3">
+                    <button class="py-6 px-4 text-lg font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">Bank Transfer</button>
+                    <button class="py-6 px-4 text-lg font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">Gift Card</button>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Customer Card -->
+          <div class="flex flex-col px-5 py-4 border bg-white border-gray-200 rounded-xl shadow-xs">
+
+            <!-- No customer selected -->
+            <div class="flex items-center gap-2 text-base text-gray-500">
+              <svg class="shrink-0 size-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                <path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/>
+              </svg>
+              <span class="text-blue-600 hover:underline font-medium cursor-pointer">Add a customer</span>
+              <span>to process this sale using the following options</span>
             </div>
 
-            <!-- Cash / Eftpos buttons -->
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                class="py-6 sm:py-7 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-xl rounded-xl transition-all"
-                (click)="openCashModal()"
-              >Cash</button>
-              <button
-                class="py-6 sm:py-7 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-xl rounded-xl transition-all"
-                (click)="confirmEftposPayment()"
-              >Eftpos</button>
-            </div>
-
-            <!-- Other -->
-            <button class="w-full flex items-center justify-between px-4 py-3.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
-              <span class="text-sm font-medium text-slate-600">Other</span>
-              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Payment options toggle -->
+            <div
+              class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 cursor-pointer text-base font-medium text-gray-600 hover:text-gray-800 transition-colors"
+              (click)="customerPaymentsOpen.set(!customerPaymentsOpen())"
+            >
+              <span>Payment options</span>
+              <svg class="w-4 h-4 transition-transform shrink-0" [class.rotate-90]="customerPaymentsOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
-            </button>
+            </div>
+            @if (customerPaymentsOpen()) {
+              <div class="grid grid-cols-3 gap-3 mt-3">
+                <button class="py-6 px-4 text-lg font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">Store Credit</button>
+                <button class="py-6 px-4 text-lg font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">On Account</button>
+                <button class="py-6 px-4 text-lg font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">Laybuy</button>
+                <button class="py-6 px-4 text-lg font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">Quote</button>
+              </div>
+            }
           </div>
+
         </div>
       </div>
 
       <!-- ── Cash Payment Modal ──────────────────────────────────────────── -->
       @if (cashModal()) {
-        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" (click)="$event.stopPropagation()">
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-lg font-bold text-slate-900">Cash Payment</h2>
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3">
+          <div class="w-full sm:max-w-lg flex flex-col bg-white border border-gray-200 shadow-2xs rounded-xl" (click)="$event.stopPropagation()">
+
+            <!-- Header -->
+            <div class="flex justify-between items-center py-4 px-6 border-b border-gray-200">
+              <h3 class="font-bold text-gray-800">Cash Payment</h3>
               <button
-                class="w-9 h-9 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
+                class="size-8 inline-flex justify-center items-center rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none"
                 (click)="cashModal.set(false)"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                <svg class="shrink-0 size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
                 </svg>
               </button>
             </div>
-            <div class="text-center mb-6">
-              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">AMOUNT TO PAY</p>
-              <p class="text-4xl font-bold text-slate-900">{{ cashAmountDue() | currency }}</p>
+
+            <!-- Body -->
+            <div class="p-8 space-y-6">
+              <!-- Amount to Pay -->
+              <div class="text-center">
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Amount to Pay</p>
+                <p class="text-4xl font-bold text-gray-900">{{ cashAmountDue() | currency }}</p>
+              </div>
+
+              <!-- Amount Given by Customer -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Amount Given by Customer</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  class="w-full text-3xl font-bold text-left rounded-lg px-6 py-4 bg-white border-2 border-gray-300 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  [value]="cashGiven() > 0 ? cashGiven() : ''"
+                  (input)="cashGiven.set(+$any($event.target).value || 0)"
+                />
+              </div>
+
+              <!-- Change to Give -->
+              <div class="bg-gray-50 rounded-xl p-5 text-center">
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Change to Give</p>
+                <p class="text-4xl font-bold text-green-600">{{ cashChange() | currency }}</p>
+              </div>
             </div>
-            <div class="mb-4">
-              <label class="block text-sm text-slate-600 mb-2">Amount Given by Customer</label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                placeholder="0.00"
-                class="w-full border-2 rounded-xl px-5 py-4 text-2xl font-semibold focus:outline-none transition-colors"
-                [class.border-brand-500]="cashGiven() > 0"
-                [class.border-slate-200]="cashGiven() <= 0"
-                [value]="cashGiven() > 0 ? cashGiven() : ''"
-                (input)="cashGiven.set(+$any($event.target).value || 0)"
-              />
-            </div>
-            <div class="bg-slate-50 rounded-xl py-4 text-center mb-6">
-              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">CHANGE TO GIVE</p>
-              <p class="text-3xl font-bold text-green-600">{{ cashChange() | currency }}</p>
-            </div>
-            <div class="flex gap-3">
+
+            <!-- Footer -->
+            <div class="flex gap-3 p-6 border-t border-gray-200">
               <button
-                class="flex-1 py-4 rounded-xl border-2 border-slate-200 font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                class="flex-1 py-4 px-6 inline-flex justify-center items-center text-lg font-medium rounded-lg border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all"
                 (click)="cashModal.set(false)"
               >Cancel</button>
               <button
-                class="flex-1 py-4 rounded-xl font-bold text-white transition-colors"
-                [class.bg-blue-600]="cashCanComplete()"
-                [class.hover:bg-blue-700]="cashCanComplete()"
-                [class.bg-brand-200]="!cashCanComplete()"
-                [class.cursor-not-allowed]="!cashCanComplete()"
+                class="flex-1 py-4 px-6 inline-flex justify-center items-center text-lg font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                [disabled]="!cashCanComplete()"
                 (click)="confirmCashPayment()"
               >Done</button>
             </div>
+
           </div>
         </div>
       }
@@ -190,70 +276,78 @@ interface Payment { method: string; amount: number; date: Date; }
       <!-- ── Sale Complete Modal ─────────────────────────────────────────── -->
       @if (saleComplete()) {
         <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6 sm:p-8 overflow-y-auto max-h-[95dvh]">
-            <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-              </svg>
-            </div>
-            <h2 class="text-2xl font-bold text-center text-slate-900 mb-1">Sale Complete</h2>
-            <p class="text-sm text-slate-500 text-center mb-6">Payment received successfully</p>
-            <div class="border-t border-slate-100 pt-5 mt-1">
-              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 text-center mb-1">SEND RECEIPT</p>
-              <p class="text-sm italic text-orange-500 text-center mb-5">"Would you like the receipt sent to your phone?"</p>
-              <!-- Print -->
-              <div class="flex items-center gap-3 p-4 border border-slate-200 rounded-xl mb-3">
-                <svg class="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                        d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/>
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-y-auto max-h-[95dvh]">
+            <!-- Success Header -->
+            <div class="flex flex-col items-center py-4 px-8 text-center">
+              <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-5">
+                <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                 </svg>
-                <div class="flex-1">
-                  <p class="text-sm font-semibold text-slate-900">Print</p>
-                  <p class="text-xs text-slate-400">Auto-print disabled</p>
-                </div>
-                <button class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-lg transition-colors" (click)="printReceipt()">Print</button>
               </div>
+              <h2 class="text-3xl font-bold text-gray-900 mb-2">Sale Complete</h2>
+              <p class="text-gray-500 text-lg">Payment received successfully</p>
+            </div>
+            <!-- Receipt Options -->
+            <div class="px-8 pb-8 space-y-3">
+              <p class="text-xl font-bold text-orange-500 text-center">"Would you like the receipt sent to your phone?"</p>
+
               <!-- SMS -->
-              <div class="flex items-start gap-3 p-4 border border-slate-200 rounded-xl mb-3">
-                <svg class="w-5 h-5 text-slate-400 shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-                </svg>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold text-slate-900 mb-2">SMS</p>
-                  <input
-                    type="tel"
-                    placeholder="04XX XXX XXX"
-                    class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition-colors"
-                    [value]="receiptPhone()"
-                    (input)="receiptPhone.set($any($event.target).value)"
-                  />
+              <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
+                <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                  </svg>
                 </div>
-                <button class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-lg transition-colors mt-7 shrink-0">Send</button>
+                <input type="tel" placeholder="04XX XXX XXX" [value]="receiptPhone()" (input)="receiptPhone.set($any($event.target).value); smsSent.set(false)"
+                  class="flex-1 px-3 py-2 text-base rounded-lg border border-blue-200 bg-white text-gray-900 focus:outline-none focus:border-blue-500 transition-colors"/>
+                @if (smsSent()) {
+                  <span class="px-4 py-2 text-base font-semibold text-green-600">Sent ✓</span>
+                } @else {
+                  <button
+                    class="px-4 py-2 text-base font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    [disabled]="smsSending() || !receiptPhone()"
+                    (click)="sendSmsReceipt()"
+                  >{{ smsSending() ? 'Sending…' : 'Send' }}</button>
+                }
               </div>
+
               <!-- Email -->
-              <div class="flex items-start gap-3 p-4 border border-slate-200 rounded-xl mb-5">
-                <svg class="w-5 h-5 text-slate-400 shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold text-slate-900 mb-2">Email</p>
-                  <input
-                    type="email"
-                    placeholder="Email address"
-                    class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition-colors"
-                    [value]="receiptEmail()"
-                    (input)="receiptEmail.set($any($event.target).value)"
-                  />
+              <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
+                <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
                 </div>
-                <button class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-lg transition-colors mt-7 shrink-0">Send</button>
+                <input type="email" placeholder="Email address" [value]="receiptEmail()" (input)="receiptEmail.set($any($event.target).value); emailSent.set(false)"
+                  class="flex-1 px-3 py-2 text-base rounded-lg border border-blue-200 bg-white text-gray-900 focus:outline-none focus:border-blue-500 transition-colors"/>
+                @if (emailSent()) {
+                  <span class="px-4 py-2 text-base font-semibold text-green-600">Sent ✓</span>
+                } @else {
+                  <button
+                    class="px-4 py-2 text-base font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    [disabled]="emailSending() || !receiptEmail()"
+                    (click)="sendEmailReceipt()"
+                  >{{ emailSending() ? 'Sending…' : 'Send' }}</button>
+                }
               </div>
+
+              <!-- Next Sale -->
+              <button
+                class="w-full mt-1 py-4 px-6 text-lg font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                (click)="nextSale()"
+              >Next Sale</button>
+
+              <!-- Print Receipt -->
+              <button
+                class="w-full py-3 px-6 text-base font-semibold rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all flex justify-center items-center gap-2"
+                (click)="printReceipt()"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                Print Receipt
+              </button>
             </div>
-            <button
-              class="w-full py-4 bg-brand-600 hover:bg-brand-700 active:scale-[0.99] text-white font-bold text-base rounded-xl transition-all"
-              (click)="nextSale()"
-            >Next Sale</button>
           </div>
         </div>
       }
@@ -427,7 +521,7 @@ interface Payment { method: string; amount: number; date: Date; }
       </div>
 
       <!-- ── RIGHT: Cart Panel ───────────────────────────────────────────── -->
-      <div class="w-full lg:w-[636px] shrink-0 flex flex-col lg:h-full lg:min-h-0">
+      <div class="w-full lg:w-[636px] shrink-0 flex flex-col h-full min-h-0">
 
         <!-- White card: Customer + Items + ADD row -->
         <div class="flex flex-col px-5 pt-4 border border-gray-200 bg-white rounded-xl shadow-sm flex-1 min-h-0 overflow-hidden">
@@ -447,7 +541,7 @@ interface Payment { method: string; amount: number; date: Date; }
           </div>
 
           <!-- Items list (scrollable) -->
-          <div class="flex-1 overflow-y-auto" style="min-height:200px">
+          <div class="flex-1 min-h-0 overflow-y-auto">
             @if (cartSvc.items().length === 0) {
               <div class="text-center text-gray-400 py-10">No items added yet</div>
             } @else {
@@ -1391,6 +1485,7 @@ interface Payment { method: string; amount: number; date: Date; }
 export class PosComponent implements OnInit, OnDestroy {
   private productSvc = inject(ProductService);
   private toast      = inject(ToastService);
+  private emailSvc   = inject(EmailService);
   cartSvc            = inject(CartService);
   Math               = Math;
   private destroy$   = new Subject<void>();
@@ -1468,18 +1563,25 @@ export class PosComponent implements OnInit, OnDestroy {
   discountDesc       = signal('');
 
   // ── Checkout / Payment ─────────────────────────────────────────────────
-  checkoutMode   = signal(false);
-  payments       = signal<Payment[]>([]);
-  amountToPayStr = signal('');
+  checkoutMode          = signal(false);
+  payments              = signal<Payment[]>([]);
+  amountToPayStr        = signal('');
+  otherPaymentsOpen     = signal(false);
+  customerPaymentsOpen  = signal(false);
+  amountWarning         = signal('');
 
   // Cash modal
   cashModal = signal(false);
   cashGiven = signal(0);
 
   // Sale complete
-  saleComplete  = signal(false);
-  receiptPhone  = signal('');
-  receiptEmail  = signal('');
+  saleComplete   = signal(false);
+  receiptPhone   = signal('');
+  receiptEmail   = signal('');
+  emailSending   = signal(false);
+  emailSent      = signal(false);
+  smsSending     = signal(false);
+  smsSent        = signal(false);
 
   // ── Checkout computed values ───────────────────────────────────────────
   saleTotal  = computed(() => this.cartSvc.total());
@@ -1825,6 +1927,10 @@ export class PosComponent implements OnInit, OnDestroy {
 
   // ── Checkout flow ──────────────────────────────────────────────────────
 
+  setAmountToPay(val: string) {
+    this.amountToPayStr.set(val.replace(/[^0-9.]/g, ''));
+  }
+
   enterCheckout() {
     this.payments.set([]);
     this.amountToPayStr.set(this.saleTotal().toFixed(2));
@@ -1869,9 +1975,64 @@ export class PosComponent implements OnInit, OnDestroy {
     this.payments.set([]);
     this.receiptPhone.set('');
     this.receiptEmail.set('');
+    this.emailSent.set(false);
+    this.smsSent.set(false);
+  }
+
+  async sendSmsReceipt() {
+    const raw = this.receiptPhone().trim().replace(/\s+/g, '');
+    if (!raw) return;
+
+    // Convert AU mobile 04xxxxxxxx → 614xxxxxxxx for ClickSend gateway
+    const intl = raw.startsWith('0') ? '61' + raw.slice(1) : raw;
+    const smsEmail = `${intl}@sms.clicksend.com`;
+
+    const m = (n: number) => '$' + n.toFixed(2);
+    const body = [
+      'Sauers Receipt',
+      '---------------',
+      ...this.cartSvc.items().map(i => `${i.productName} x${i.quantity} ${m(this.getItemBasePrice(i) * i.quantity)}`),
+      '---------------',
+      `Subtotal: ${m(this.subtotal())}`,
+      `GST 10%: ${m(this.gst())}`,
+      `TOTAL: ${m(this.saleTotal())}`,
+      ...this.payments().map(p => `${p.method}: ${m(p.amount)}`),
+      'Thank you!'
+    ].join('\n');
+
+    this.smsSending.set(true);
+    try {
+      await this.emailSvc.sendReceipt(smsEmail, 'Receipt', body);
+      this.smsSent.set(true);
+      this.toast.show('success', 'SMS sent to ' + this.receiptPhone(), 8000);
+    } catch {
+      this.toast.show('error', 'Failed to send SMS. Please try again.', 8000);
+    } finally {
+      this.smsSending.set(false);
+    }
+  }
+
+  async sendEmailReceipt() {
+    const email = this.receiptEmail().trim();
+    if (!email) return;
+    this.emailSending.set(true);
+    try {
+      const html = this.buildReceiptHtml();
+      await this.emailSvc.sendReceipt(email, 'Your Receipt – Sauers', html);
+      this.emailSent.set(true);
+      this.toast.show('success', '✉ Receipt sent to ' + email, 8000);
+    } catch {
+      this.toast.show('error', '✕ Failed to send email. Please try again.', 8000);
+    } finally {
+      this.emailSending.set(false);
+    }
   }
 
   printReceipt() {
+    this.printViaQZ(this.buildReceiptHtml());
+  }
+
+  private buildReceiptHtml(): string {
     const m   = (n: number) => '$' + n.toFixed(2);
     const now = this.payments().length ? this.payments()[0].date : new Date();
     const receiptNo = Date.now().toString().slice(-8);
@@ -1946,9 +2107,36 @@ export class PosComponent implements OnInit, OnDestroy {
 <script>document.fonts.ready.then(()=>{window.print();})</script>
 </body></html>`;
 
-    const blob = new Blob([html], { type: 'text/html' });
-    const url  = URL.createObjectURL(blob);
-    window.open(url, '_blank', 'width=420,height=600,toolbar=0,menubar=0');
+    return html;
+  }
+
+  private async printViaQZ(html: string) {
+    const qz = (window as any)['qz'];
+    if (!qz) { this.printFallback(html); return; }
+
+    try {
+      if (!qz.websocket.isActive()) {
+        await qz.websocket.connect();
+      }
+      const printer = await qz.printers.getDefault();
+      const config  = qz.configs.create(printer, { size: { width: 80, units: 'mm' } });
+      await qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
+    } catch (e) {
+      console.warn('QZ Tray not available, falling back to browser print:', e);
+      this.printFallback(html);
+    }
+  }
+
+  private printFallback(html: string) {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:0;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument!;
+    doc.open(); doc.write(html); doc.close();
+    iframe.contentWindow!.addEventListener('load', () => {
+      iframe.contentWindow!.print();
+      setTimeout(() => document.body.removeChild(iframe), 2000);
+    });
   }
 
   isInCart(productId: number): boolean {

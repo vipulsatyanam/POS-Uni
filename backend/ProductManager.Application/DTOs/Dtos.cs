@@ -77,3 +77,15 @@ public class CreateProductDto
 }
 
 public class UpdateProductDto : CreateProductDto { }
+
+// ─── Email ────────────────────────────────────────────────────────────────────
+
+public class SendReceiptEmailDto
+{
+    [Required, EmailAddress]
+    public string ToEmail { get; set; } = string.Empty;
+    [Required]
+    public string Subject { get; set; } = string.Empty;
+    [Required]
+    public string HtmlBody { get; set; } = string.Empty;
+}
