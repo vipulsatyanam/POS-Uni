@@ -50,3 +50,8 @@ public interface ICategoryService
     Task<IEnumerable<CategoryDto>> GetCategoriesAsync();
     Task<CategoryDto> CreateCategoryAsync(CreateCategoryDto dto);
 }
+
+public interface IEmailService
+{
+    Task SendAsync(string toEmail, string subject, string htmlBody);
+}

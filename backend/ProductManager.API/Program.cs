@@ -36,6 +36,10 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 
+var smtpSettings = builder.Configuration.GetSection("Smtp").Get<SmtpSettings>() ?? new SmtpSettings();
+builder.Services.AddSingleton(smtpSettings);
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 // CORS Configuration (Allow Angular Frontend)
 builder.Services.AddCors(options =>
 {

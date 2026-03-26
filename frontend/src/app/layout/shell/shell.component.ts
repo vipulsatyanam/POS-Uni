@@ -2,13 +2,15 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { Router, NavigationEnd, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { CommonModule } from '@angular/common';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { HeaderComponent } from '../header/header.component';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, HeaderComponent],
+  imports: [RouterOutlet, SidebarComponent, HeaderComponent, CommonModule],
   template: `
     <div class="flex h-screen overflow-hidden bg-slate-50">
 
@@ -35,10 +37,32 @@ import { HeaderComponent } from '../header/header.component';
         </main>
       </div>
 
+      <!-- ── Toast Notifications ── -->
+      <div class="fixed top-5 right-5 z-[9999] flex flex-col gap-3 w-80">
+        @for (t of toast.toasts(); track t.id) {
+          <div
+            class="flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium animate-fade-in"
+            [class]="t.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+                     t.type === 'error'   ? 'bg-red-50 border-red-200 text-red-800' :
+                                            'bg-blue-50 border-blue-200 text-blue-800'"
+          >
+            <!-- Icon -->
+            <span class="text-lg shrink-0">
+              {{ t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'ℹ' }}
+            </span>
+            <!-- Message -->
+            <span class="flex-1">{{ t.message }}</span>
+            <!-- Close -->
+            <button class="shrink-0 opacity-50 hover:opacity-100 text-base leading-none" (click)="toast.dismiss(t.id)">✕</button>
+          </div>
+        }
+      </div>
+
     </div>
   `
 })
 export class ShellComponent {
+  toast = inject(ToastService);
   sidebarOpen = signal(false);
   toggleSidebar() { this.sidebarOpen.update(v => !v); }
 

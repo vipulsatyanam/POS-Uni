@@ -7,4 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ProductManager.Domain\ProductManager.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.15.1" />
+  </ItemGroup>
 </Project>
