@@ -75,5 +75,8 @@ export class ShellComponent {
     ),
     { initialValue: this.router.url }
   );
-  isPOS = computed(() => (this.url() ?? '').includes('/pos'));
+  isPOS = computed(() => {
+    const url = this.url() ?? '';
+    return url.includes('/pos') || url.includes('/settings');
+  });
 }
