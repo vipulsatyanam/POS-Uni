@@ -18,7 +18,8 @@ export interface TyroTransactionResponse {
 }
 
 const STORAGE_KEY = 'tyro_settings';
-const ICLIENT_URL = 'https://iclient.tyro.com/iclient-integrator.js';
+const ICLIENT_PROD_URL = 'https://iclient.tyro.com/iclient-integrator.js';
+const ICLIENT_SIM_URL  = 'https://iclientsimulator.test.tyro.com/iclient-integrator.js';
 
 @Injectable({ providedIn: 'root' })
 export class TyroService {
@@ -40,9 +41,11 @@ export class TyroService {
   // ── Settings ───────────────────────────────────────────────────────────────
 
   saveSettings(settings: TyroSettings): void {
+    const modeChanged = settings.testMode !== this._settings().testMode;
     this._settings.set(settings);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    this.iClient = null; // force re-initialisation on next use
+    this.iClient = null;
+    if (modeChanged) this.sdkLoaded = false; // force SDK reload when switching modes
   }
 
   private loadSettings(): TyroSettings {
@@ -60,7 +63,7 @@ export class TyroService {
   private loadSdk(): Promise<void> {
     if (this.sdkLoaded) return Promise.resolve();
 
-    const url = ICLIENT_URL;
+    const url = this._settings().testMode ? ICLIENT_SIM_URL : ICLIENT_PROD_URL;
 
     return new Promise((resolve, reject) => {
       // Remove existing Tyro script if mode changed
