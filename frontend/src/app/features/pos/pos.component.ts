@@ -8,6 +8,7 @@ import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmailService } from '../../core/services/email.service';
+import { TyroService } from '../../core/services/tyro.service';
 import { CartItem, Product } from '../../core/models/product.model';
 import { environment } from '../../../environments/environment';
 
@@ -148,9 +149,10 @@ interface Payment { method: string; amount: number; date: Date; }
                   (click)="openCashModal()"
                 >Cash</button>
                 <button
-                  class="py-10 px-4 text-xl font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  class="py-10 px-4 text-xl font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   (click)="confirmEftposPayment()"
-                >Eftpos</button>
+                  [disabled]="tyroSvc.loading()"
+                >{{ tyroSvc.loading() ? 'Processing…' : 'Eftpos' }}</button>
               </div>
 
               <!-- Other (collapsible) -->
@@ -1486,6 +1488,7 @@ export class PosComponent implements OnInit, OnDestroy {
   private productSvc = inject(ProductService);
   private toast      = inject(ToastService);
   private emailSvc   = inject(EmailService);
+  tyroSvc            = inject(TyroService);
   cartSvc            = inject(CartService);
   Math               = Math;
   private destroy$   = new Subject<void>();
@@ -1955,8 +1958,22 @@ export class PosComponent implements OnInit, OnDestroy {
     this.cashGiven.set(0);
   }
 
-  confirmEftposPayment() {
-    this.recordPayment('Eftpos', this.amountToPayValue());
+  async confirmEftposPayment() {
+    if (!this.tyroSvc.isConfigured()) {
+      this.toast.show('error', 'EFTPOS not configured. Go to Settings → EFTPOS Settings.');
+      return;
+    }
+
+    const amount = this.amountToPayValue();
+    const response = await this.tyroSvc.purchase(amount);
+
+    if (response.result === 'APPROVED') {
+      this.recordPayment('Eftpos', amount);
+    } else if (response.result === 'CANCELLED') {
+      this.toast.show('info', 'EFTPOS payment cancelled.');
+    } else {
+      this.toast.show('error', `EFTPOS payment ${response.result.toLowerCase()}. Please try again.`);
+    }
   }
 
   private recordPayment(method: string, amount: number) {

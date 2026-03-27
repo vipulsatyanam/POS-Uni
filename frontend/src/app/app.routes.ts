@@ -19,6 +19,11 @@ export const routes: Routes = [
         path: 'categories',
         loadComponent: () => import('./features/categories/category-management.component')
           .then(m => m.CategoryManagementComponent)
+      },
+      {
+        path: 'settings/eftpos',
+        loadComponent: () => import('./features/settings/terminal-settings/terminal-settings.component')
+          .then(m => m.TerminalSettingsComponent)
       }
     ]
   },
