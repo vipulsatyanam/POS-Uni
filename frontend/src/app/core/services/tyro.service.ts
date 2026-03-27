@@ -18,8 +18,6 @@ export interface TyroTransactionResponse {
 }
 
 const STORAGE_KEY = 'tyro_settings';
-const ICLIENT_PROD_URL = 'https://iclient.tyro.com/iclient-integrator.js';
-const ICLIENT_SIM_URL  = 'https://iclientsimulator.test.tyro.com/iclient-integrator.js';
 
 @Injectable({ providedIn: 'root' })
 export class TyroService {
@@ -29,23 +27,20 @@ export class TyroService {
 
   isConfigured = computed(() => !!(this._settings().mid && this._settings().tid));
 
-  private _status   = signal<string>('');
-  private _loading  = signal<boolean>(false);
+  private _status  = signal<string>('');
+  private _loading = signal<boolean>(false);
   status  = this._status.asReadonly();
   loading = this._loading.asReadonly();
 
-  // Reference to the loaded iClient instance (any — Tyro doesn't ship TS types)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private iClient: any = null;
 
   // ── Settings ───────────────────────────────────────────────────────────────
 
   saveSettings(settings: TyroSettings): void {
-    const modeChanged = settings.testMode !== this._settings().testMode;
     this._settings.set(settings);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    this.iClient = null;
-    if (modeChanged) this.sdkLoaded = false; // force SDK reload when switching modes
+    this.iClient = null; // force re-init on next use
   }
 
   private loadSettings(): TyroSettings {
@@ -56,39 +51,17 @@ export class TyroService {
     return { mid: '', tid: '', testMode: true };
   }
 
-  // ── SDK loading ────────────────────────────────────────────────────────────
-
-  private sdkLoaded = false;
-
-  private loadSdk(): Promise<void> {
-    if (this.sdkLoaded) return Promise.resolve();
-
-    const url = this._settings().testMode ? ICLIENT_SIM_URL : ICLIENT_PROD_URL;
-
-    return new Promise((resolve, reject) => {
-      // Remove existing Tyro script if mode changed
-      const existing = document.querySelector('script[data-tyro]');
-      if (existing) existing.remove();
-
-      const script = document.createElement('script');
-      script.src = url;
-      script.setAttribute('data-tyro', 'true');
-      script.onload = () => { this.sdkLoaded = true; resolve(); };
-      script.onerror = () => reject(new Error('Failed to load Tyro iClient SDK'));
-      document.head.appendChild(script);
-    });
-  }
-
   // ── iClient init ───────────────────────────────────────────────────────────
+  // SDK is loaded via <script> in index.html — no dynamic loading needed.
 
-  private async getClient(): Promise<unknown> {
+  private getClient(): unknown {
     if (this.iClient) return this.iClient;
 
-    await this.loadSdk();
-    const { mid, tid } = this._settings();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const TYRO = (window as any)['TYRO'];
-    if (!TYRO) throw new Error('Tyro iClient SDK not available');
+    if (!TYRO) throw new Error('Tyro iClient SDK not loaded. Check your internet connection and refresh the page.');
+
+    const { mid, tid } = this._settings();
     this.iClient = new TYRO.iClient(mid, tid);
     return this.iClient;
   }
@@ -100,7 +73,7 @@ export class TyroService {
     this._status.set('Pairing terminal…');
 
     try {
-      const client = await this.getClient() as {
+      const client = this.getClient() as {
         pairTerminal: (cb: (r: { status: string; message?: string }) => void) => void
       };
 
@@ -128,7 +101,7 @@ export class TyroService {
     this._status.set('Initiating payment…');
 
     try {
-      const client = await this.getClient() as {
+      const client = this.getClient() as {
         initiatePurchase: (
           opts: { amount: number; cashout: number; integratedReceipt: boolean },
           callbacks: {
@@ -148,7 +121,7 @@ export class TyroService {
           {
             statusMessageCallback: (msg) => this._status.set(msg),
             questionCallback: (_q, answer) => answer(true),
-            receiptCallback: (_r) => { /* receipt printed separately */ },
+            receiptCallback: (_r) => { /* receipt handled separately */ },
             transactionCompleteCallback: (response) => {
               this._status.set(`Transaction: ${response.result}`);
               this._loading.set(false);
