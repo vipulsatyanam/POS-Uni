@@ -18,8 +18,7 @@ export interface TyroTransactionResponse {
 }
 
 const STORAGE_KEY = 'tyro_settings';
-const ICLIENT_PROD_URL = 'https://iclient.tyro.com/iclient-integrator.js';
-const ICLIENT_SIM_URL  = 'https://iclient.tyro.com/iclient-integrator-simulator.js';
+const ICLIENT_URL = 'https://iclient.tyro.com/iclient-integrator.js';
 
 @Injectable({ providedIn: 'root' })
 export class TyroService {
@@ -61,7 +60,7 @@ export class TyroService {
   private loadSdk(): Promise<void> {
     if (this.sdkLoaded) return Promise.resolve();
 
-    const url = this._settings().testMode ? ICLIENT_SIM_URL : ICLIENT_PROD_URL;
+    const url = ICLIENT_URL;
 
     return new Promise((resolve, reject) => {
       // Remove existing Tyro script if mode changed
