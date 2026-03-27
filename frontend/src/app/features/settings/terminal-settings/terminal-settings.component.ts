@@ -10,7 +10,7 @@ import { ToastService } from '../../../core/services/toast.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="flex flex-col px-8 w-full max-w-2xl">
+    <div class="flex flex-col px-8 pt-8 w-full max-w-2xl">
 
       <!-- Header -->
       <div class="pt-1 px-1 pb-6">
