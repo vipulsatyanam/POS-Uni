@@ -142,21 +142,24 @@ interface Payment { method: string; amount: number; date: Date; }
 
             <!-- Payment buttons -->
             <div class="mb-4">
-              <!-- Cash / Eftpos -->
+              <!-- Cash / Eftpos side by side -->
               <div class="grid grid-cols-2 gap-3 mb-3">
                 <button
                   class="py-10 px-4 text-xl font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                   (click)="openCashModal()"
                 >Cash</button>
                 <button
-                  class="py-10 px-4 text-xl font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  (click)="confirmEftposPayment()"
+                  class="py-10 px-4 text-xl font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  [class]="selectedPaymentMethod() === 'eftpos'
+                    ? 'bg-blue-800 ring-2 ring-blue-400 ring-offset-2'
+                    : 'bg-blue-600 hover:bg-blue-700'"
+                  (click)="selectedPaymentMethod.set('eftpos')"
                   [disabled]="tyroSvc.loading()"
                 >{{ tyroSvc.loading() ? 'Processing…' : 'Eftpos' }}</button>
               </div>
 
               <!-- Other (collapsible) -->
-              <div>
+              <div class="mb-3">
                 <button
                   class="w-full flex items-center justify-between px-4 py-4 text-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition-colors"
                   (click)="otherPaymentsOpen.set(!otherPaymentsOpen())"
@@ -173,6 +176,16 @@ interface Payment { method: string; amount: number; date: Date; }
                   </div>
                 }
               </div>
+
+              <!-- Charge via EFTPOS confirmation button -->
+              @if (selectedPaymentMethod() === 'eftpos' && !tyroSvc.loading()) {
+                <button
+                  class="w-full py-5 px-6 text-xl font-semibold rounded-xl bg-green-600 text-white hover:bg-green-700 focus:outline-none transition-colors shadow-sm"
+                  (click)="confirmEftposPayment()"
+                >
+                  Charge {{ amountToPayValue() | currency }} via EFTPOS
+                </button>
+              }
             </div>
           </div>
 
@@ -1576,6 +1589,9 @@ export class PosComponent implements OnInit, OnDestroy {
   // Cash modal
   cashModal = signal(false);
   cashGiven = signal(0);
+
+  // Payment method selection
+  selectedPaymentMethod = signal('');
 
   // Sale complete
   saleComplete   = signal(false);

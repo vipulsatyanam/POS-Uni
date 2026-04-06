@@ -83,11 +83,17 @@ import { ToastService } from '../../../core/services/toast.service';
             <p class="text-xs text-gray-400">Pair this browser with your terminal. You only need to do this once.</p>
           </div>
 
+          @if (!tyro.sdkLoaded()) {
+            <div class="text-sm p-3 rounded-lg border bg-amber-50 border-amber-200 text-amber-700">
+              Loading Tyro SDK… If this persists, check your internet connection and refresh the page.
+            </div>
+          }
+
           <button
             type="button"
             class="py-2.5 px-5 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             (click)="pairTerminal()"
-            [disabled]="tyro.loading() || !mid || !tid"
+            [disabled]="tyro.loading() || !tyro.sdkLoaded() || !mid || !tid"
           >
             <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>

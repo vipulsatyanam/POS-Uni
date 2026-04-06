@@ -189,3 +189,5 @@
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
+
+/* Tyro iClient overlay — injected at runtime by TyroService.observeTyroModal() */
