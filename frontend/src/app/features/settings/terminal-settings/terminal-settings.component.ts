@@ -1,154 +1,228 @@
-import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Router } from '@angular/router';
-import { TyroService, TyroSettings } from '../../../core/services/tyro.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { TyroService, TyroSettings } from '../../../core/services/tyro.service';
 
 @Component({
   selector: 'app-terminal-settings',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="flex flex-col px-8 pt-8 w-full max-w-2xl">
-
-      <!-- Header -->
-      <div class="pt-1 px-1 pb-6">
-        <div class="pb-1 border-b border-gray-200">
-          <h1 class="text-2xl font-semibold text-gray-800">EFTPOS Settings</h1>
-          <p class="mt-1 text-sm text-gray-500">Configure your Tyro EFTPOS terminal connection.</p>
-        </div>
+    <div class="w-full max-w-5xl px-6 py-8 lg:px-8">
+      <div class="mb-6 border-b border-slate-200 pb-5">
+        <h1 class="text-2xl font-semibold text-slate-900">EFTPOS Settings</h1>
+        <p class="mt-1 text-sm text-slate-500">Configure your Tyro EFTPOS terminal connection.</p>
       </div>
 
-      <!-- Settings Card -->
-      <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
-
-        <!-- CONNECTION -->
-        <div class="p-6 space-y-5">
-          <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Connection</h2>
+      <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section class="space-y-5 px-6 py-6">
+          <h2 class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Connection</h2>
 
           <div>
-            <label for="tyro-mid" class="block text-sm font-medium text-gray-700 mb-1">Merchant ID (MID)</label>
+            <label for="tyro-mid" class="mb-1 block text-sm font-medium text-slate-700">Merchant ID (MID)</label>
             <input
-              type="text"
               id="tyro-mid"
+              type="text"
               [(ngModel)]="mid"
               placeholder="e.g. 2203"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
-            <p class="mt-1 text-xs text-gray-400">Provided by Tyro when your account was created.</p>
+            <p class="mt-1 text-xs text-slate-400">Provided by Tyro when your account was created.</p>
           </div>
 
           <div>
-            <label for="tyro-tid" class="block text-sm font-medium text-gray-700 mb-1">Terminal ID (TID)</label>
+            <label for="tyro-tid" class="mb-1 block text-sm font-medium text-slate-700">Terminal ID (TID)</label>
             <input
-              type="text"
               id="tyro-tid"
+              type="text"
               [(ngModel)]="tid"
               placeholder="e.g. 1"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
-            <p class="mt-1 text-xs text-gray-400">Found on the label on your physical terminal.</p>
+            <p class="mt-1 text-xs text-slate-400">Found on the label on your physical terminal.</p>
           </div>
-        </div>
+        </section>
 
-        <div class="border-t border-gray-100"></div>
+        <div class="border-t border-slate-100"></div>
 
-        <!-- MODE -->
-        <div class="p-6">
-          <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Mode</h2>
-          <div class="flex items-start justify-between gap-4">
+        <section class="px-6 py-6">
+          <h2 class="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Mode</h2>
+          <div class="space-y-5">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-sm font-medium text-slate-800">Test Mode</p>
+                <p class="mt-1 text-sm text-slate-400">Use the Tyro simulator instead of a real terminal. Disable when going live.</p>
+              </div>
+              <button type="button" class="tyro-switch" [class.tyro-switch-on]="testMode" (click)="testMode = !testMode">
+                <span class="tyro-switch-thumb" [class.tyro-switch-thumb-on]="testMode"></span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <div class="border-t border-slate-100"></div>
+
+        <section class="px-6 py-6">
+          <h2 class="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Integrated Receipts</h2>
+          <div class="space-y-5">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-sm font-medium text-slate-800">Integrated Receipts</p>
+                <p class="mt-1 text-sm text-slate-400">Include the Tyro EFTPOS customer and merchant receipts on the POS sales receipt for a single combined printout.</p>
+              </div>
+              <button type="button" class="tyro-switch" [class.tyro-switch-on]="integratedReceipts" (click)="integratedReceipts = !integratedReceipts">
+                <span class="tyro-switch-thumb" [class.tyro-switch-thumb-on]="integratedReceipts"></span>
+              </button>
+            </div>
+
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-sm font-medium text-slate-800">Print Tyro Merchant Copy</p>
+                <p class="mt-1 text-sm text-slate-400">Print a merchant copy for non-signature transactions. Signature-verified merchant copies are always printed.</p>
+              </div>
+              <button type="button" class="tyro-switch" [class.tyro-switch-on]="printMerchantCopy" (click)="printMerchantCopy = !printMerchantCopy">
+                <span class="tyro-switch-thumb" [class.tyro-switch-thumb-on]="printMerchantCopy"></span>
+              </button>
+            </div>
+
+          </div>
+        </section>
+
+        @if (testMode) {
+          <div class="border-t border-slate-100"></div>
+
+          <section class="space-y-5 px-6 py-6">
             <div>
-              <p class="text-sm font-medium text-gray-700">Test Mode</p>
-              <p class="text-xs text-gray-400 mt-0.5">Use the Tyro simulator instead of a real terminal. Turn off when going live.</p>
+              <h2 class="mb-1 text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Terminal Pairing</h2>
+              <p class="text-sm text-slate-400">Pair this POS with your Tyro terminal. You only need to do this once.</p>
             </div>
-            <label class="relative inline-block w-11 h-6 cursor-pointer mt-0.5">
-              <input
-                type="checkbox"
-                class="peer sr-only"
-                [(ngModel)]="testMode"
-              />
-              <span class="absolute inset-0 bg-gray-200 rounded-full transition-colors duration-200 ease-in-out peer-checked:bg-blue-600"></span>
-              <span class="absolute top-1/2 start-0.5 -translate-y-1/2 size-5 bg-white rounded-full shadow-sm transition-transform duration-200 ease-in-out peer-checked:translate-x-full"></span>
-            </label>
+
+            <div class="flex flex-wrap gap-4">
+              <button type="button" class="tyro-action-button" (click)="togglePairingFrame()">
+                <svg class="size-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                {{ showPairingFrame() ? 'Close Pairing UI' : 'Pair Tyro Terminal' }}
+              </button>
+
+              <button type="button" class="tyro-action-button" (click)="clearPairing()">
+                <svg class="size-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12m-9 0V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0v12a1 1 0 001 1h6a1 1 0 001-1V7M9 11v6m6-6v6" />
+                </svg>
+                Clear Pairing
+              </button>
+            </div>
+
+            @if (showPairingFrame()) {
+              <div id="pairing-iframe-container" class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <iframe
+                  id="pairing-iframe"
+                  title="Tyro Pairing UI"
+                  class="block w-full bg-white"
+                  style="height:500px;"
+                  allow="same-origin"
+                  [src]="pairingUrl()"
+                ></iframe>
+              </div>
+            }
+
+            @if (statusMessage()) {
+              <div
+                class="rounded-xl border px-4 py-3 text-sm"
+                [class]="statusTone() === 'success'
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : statusTone() === 'error'
+                    ? 'border-red-200 bg-red-50 text-red-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-600'"
+              >
+                {{ statusMessage() }}
+              </div>
+            }
+          </section>
+
+          <div class="border-t border-slate-100"></div>
+
+          <section class="space-y-5 px-6 py-6">
+            <div>
+              <h2 class="mb-1 text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">iClient Logs</h2>
+              <p class="text-sm text-slate-400">View Tyro iClient diagnostic logs for troubleshooting and support.</p>
+            </div>
+
+            <button type="button" class="tyro-action-button" (click)="toggleLogs()">
+              <svg class="size-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7 4h7l5 5v11a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z" />
+              </svg>
+              {{ showLogsFrame() ? 'Hide iClient Logs' : 'Request iClient Logs' }}
+            </button>
+
+            @if (showLogsFrame()) {
+              <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <iframe
+                  class="block h-[680px] w-full bg-white"
+                  [src]="logsUrl()"
+                  title="Tyro iClient Logs"
+                ></iframe>
+              </div>
+            }
+          </section>
+        }
+
+        @if (!tyro.sdkLoaded()) {
+          <div class="border-t border-slate-100 px-6 py-4">
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Loading Tyro SDK. If this persists, check your internet connection and refresh the page.
+            </div>
           </div>
-        </div>
+        }
 
-        <div class="border-t border-gray-100"></div>
-
-        <!-- TERMINAL PAIRING -->
-        <div class="p-6 space-y-4">
-          <div>
-            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Terminal Pairing</h2>
-            <p class="text-xs text-gray-400">Pair this browser with your terminal. You only need to do this once.</p>
-          </div>
-
-          @if (!tyro.sdkLoaded()) {
-            <div class="text-sm p-3 rounded-lg border bg-amber-50 border-amber-200 text-amber-700">
-              Loading Tyro SDK… If this persists, check your internet connection and refresh the page.
-            </div>
-          }
-
-          <button
-            type="button"
-            class="py-2.5 px-5 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            (click)="pairTerminal()"
-            [disabled]="tyro.loading() || !tyro.sdkLoaded() || !mid || !tid"
-          >
-            <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-            </svg>
-            {{ tyro.loading() ? 'Pairing…' : 'Pair Terminal' }}
-          </button>
-
-          @if (tyro.status()) {
-            <div
-              class="text-sm p-3 rounded-lg border"
-              [class]="pairSuccess()
-                ? 'bg-green-50 border-green-200 text-green-700'
-                : 'bg-red-50 border-red-200 text-red-700'"
-            >
-              {{ tyro.status() }}
-            </div>
-          }
-        </div>
-
-        <!-- Footer actions -->
-        <div class="flex justify-end gap-x-3 px-6 py-4 border-t border-gray-200 rounded-b-xl bg-gray-50">
-          <button
-            type="button"
-            class="py-2 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors"
-            (click)="cancel()"
-          >Cancel</button>
-          <button
-            type="button"
-            class="py-2 px-5 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none transition-colors"
-            (click)="save()"
-          >Save Settings</button>
+        <div class="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5">
+          <button type="button" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50" (click)="cancel()">Cancel</button>
+          <button type="button" class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700" (click)="save()">Save Settings</button>
         </div>
       </div>
-
     </div>
   `
 })
 export class TerminalSettingsComponent {
-  tyro  = inject(TyroService);
+  tyro = inject(TyroService);
   toast = inject(ToastService);
   router = inject(Router);
+  sanitizer = inject(DomSanitizer);
 
-  mid      = this.tyro.settings().mid;
-  tid      = this.tyro.settings().tid;
+  mid = this.tyro.settings().mid;
+  tid = this.tyro.settings().tid;
   testMode = this.tyro.settings().testMode;
+  integratedReceipts = this.tyro.settings().integratedReceipts;
+  printMerchantCopy = this.tyro.settings().printMerchantCopy;
 
-  pairSuccess = signal(false);
+  showPairingFrame = signal(false);
+  showLogsFrame = signal(false);
+  logsFrameKey = signal(Date.now());
+  statusMessage = signal('');
+  statusTone = signal<'info' | 'success' | 'error'>('info');
+
+  pairingUrl = computed(() => this.toSafeUrl(this.tyro.getPairingIframeUrl()));
+  logsUrl = computed(() => this.toSafeUrl(this.tyro.getLogsIframeUrl(this.logsFrameKey())));
 
   save() {
     const settings: TyroSettings = {
       mid: this.mid.trim(),
       tid: this.tid.trim(),
-      testMode: this.testMode
+      testMode: this.testMode,
+      integratedReceipts: this.integratedReceipts,
+      printMerchantCopy: this.printMerchantCopy
     };
+
     this.tyro.saveSettings(settings);
+
+    if (!this.testMode) {
+      this.showLogsFrame.set(false);
+    }
+
+    this.setStatus('success', 'EFTPOS settings saved.');
     this.toast.show('success', 'EFTPOS settings saved.');
   }
 
@@ -156,13 +230,34 @@ export class TerminalSettingsComponent {
     this.router.navigate(['/pos']);
   }
 
-  async pairTerminal() {
-    const result = await this.tyro.pairTerminal();
-    this.pairSuccess.set(result.success);
-    if (result.success) {
-      this.toast.show('success', 'Terminal paired successfully.');
+  togglePairingFrame() {
+    this.showPairingFrame.set(!this.showPairingFrame());
+  }
+
+  toggleLogs() {
+    const next = !this.showLogsFrame();
+    this.showLogsFrame.set(next);
+
+    if (next) {
+      this.logsFrameKey.set(Date.now());
+      this.setStatus('info', 'Tyro iClient logs opened below.');
     } else {
-      this.toast.show('error', result.message);
+      this.setStatus('info', 'Tyro iClient logs hidden.');
     }
+  }
+
+  clearPairing() {
+    const result = this.tyro.clearPairingCache();
+    this.setStatus(result.success ? 'success' : 'error', result.message);
+    this.toast.show(result.success ? 'success' : 'error', result.message);
+  }
+
+  private setStatus(tone: 'info' | 'success' | 'error', message: string) {
+    this.statusTone.set(tone);
+    this.statusMessage.set(message);
+  }
+
+  private toSafeUrl(url: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 }

@@ -4,6 +4,8 @@ export interface TyroSettings {
   mid: string;
   tid: string;
   testMode: boolean;
+  integratedReceipts: boolean;
+  printMerchantCopy: boolean;
 }
 
 export type TyroTransactionResult = 'APPROVED' | 'CANCELLED' | 'DECLINED' | 'SYSTEM ERROR';
@@ -20,6 +22,7 @@ export interface TyroTransactionResponse {
 const STORAGE_KEY = 'tyro_settings';
 const SDK_TEST_URL = 'https://iclientsimulator.test.tyro.com/iclient-with-ui-v1.js';
 const SDK_PROD_URL = 'https://iclient.tyro.com/iclient-with-ui-v1.js';
+const LOGS_IFRAME_URL = 'https://iclientsimulator.test.tyro.com/logs.html';
 
 @Injectable({ providedIn: 'root' })
 export class TyroService {
@@ -32,9 +35,11 @@ export class TyroService {
   private _status    = signal<string>('');
   private _loading   = signal<boolean>(false);
   private _sdkLoaded = signal<boolean>(false);
+  private _lastTransaction = signal<TyroTransactionResponse | null>(null);
   status    = this._status.asReadonly();
   loading   = this._loading.asReadonly();
   sdkLoaded = this._sdkLoaded.asReadonly();
+  lastTransaction = this._lastTransaction.asReadonly();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private iClient: any = null;
@@ -115,9 +120,70 @@ export class TyroService {
   private loadSettings(): TyroSettings {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw) as TyroSettings;
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<TyroSettings>;
+        return {
+          mid: parsed.mid ?? '',
+          tid: parsed.tid ?? '',
+          testMode: parsed.testMode ?? true,
+          integratedReceipts: parsed.integratedReceipts ?? false,
+          printMerchantCopy: parsed.printMerchantCopy ?? false
+        };
+      }
     } catch { /* ignore */ }
-    return { mid: '', tid: '', testMode: true };
+    return {
+      mid: '',
+      tid: '',
+      testMode: true,
+      integratedReceipts: false,
+      printMerchantCopy: false
+    };
+  }
+
+  getLogsIframeUrl(cacheBust = Date.now()): string {
+    return `${LOGS_IFRAME_URL}${LOGS_IFRAME_URL.includes('?') ? '&' : '?'}v=${cacheBust}`;
+  }
+
+  getPairingIframeUrl(): string {
+    const base = this._settings().testMode
+      ? 'https://iclientsimulator.test.tyro.com'
+      : 'https://iclient.tyro.com';
+    return `${base}/configuration.html`;
+  }
+
+  clearPairingCache(): { success: boolean; message: string } {
+    const matcher = /tyro|iclient/i;
+    let removed = 0;
+
+    for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+      const key = localStorage.key(i);
+      if (key && matcher.test(key)) {
+        localStorage.removeItem(key);
+        removed += 1;
+      }
+    }
+
+    for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+      const key = sessionStorage.key(i);
+      if (key && matcher.test(key)) {
+        sessionStorage.removeItem(key);
+        removed += 1;
+      }
+    }
+
+    this.iClient = null;
+    this._status.set('Pairing cache cleared. You can now re-pair the terminal.');
+
+    return {
+      success: true,
+      message: removed > 0
+        ? 'Pairing cache cleared. You can now re-pair the terminal.'
+        : 'No saved Tyro pairing cache was found, but the pairing state has been reset.'
+    };
+  }
+
+  clearTransactionState(): void {
+    this._lastTransaction.set(null);
   }
 
   // ── SDK Loading ────────────────────────────────────────────────────────────
@@ -189,18 +255,19 @@ export class TyroService {
 
   // ── Pair Terminal ──────────────────────────────────────────────────────────
 
-  async pairTerminal(): Promise<{ success: boolean; message: string }> {
+  async pairTerminal(mid?: string, tid?: string): Promise<{ success: boolean; message: string }> {
     this._loading.set(true);
     this._status.set('Pairing terminal…');
 
     try {
-      const { mid, tid } = this._settings();
+      const effectiveMid = mid ?? this._settings().mid;
+      const effectiveTid = tid ?? this._settings().tid;
       const client = this.getClient() as {
         pairTerminal: (mid: string, tid: string, cb: (r: { status: string; message?: string }) => void) => void
       };
 
       return await new Promise((resolve) => {
-        client.pairTerminal(mid, tid, (response) => {
+        client.pairTerminal(effectiveMid, effectiveTid, (response) => {
           if (response.status === 'success' || response.status === 'failure') {
             const success = response.status === 'success';
             const message = response.message ?? (success ? 'Terminal paired successfully.' : 'Pairing failed.');
@@ -244,6 +311,7 @@ export class TyroService {
     this._status.set('Initiating payment…');
 
     try {
+      const settings = this._settings();
       const client = this.getClient() as {
         initiatePurchase: (
           opts: { amount: string; cashout: string; integratedReceipt: boolean },
@@ -255,18 +323,21 @@ export class TyroService {
       };
 
       const amountCents = Math.round(amountDollars * 100);
+      this._lastTransaction.set(null);
 
       return await new Promise((resolve) => {
         client.initiatePurchase(
-          { amount: String(amountCents), cashout: '0', integratedReceipt: false },
           {
-            receiptCallback: (_r) => { /* receipt handled separately */ },
+            amount: String(amountCents),
+            cashout: '0',
+            integratedReceipt: settings.integratedReceipts
+          },
+          {
+            receiptCallback: (_r) => { /* receipt data comes via transactionCompleteCallback */ },
             transactionCompleteCallback: (response) => {
               this._status.set(`Transaction: ${response.result}`);
+              this._lastTransaction.set(response);
               this._loading.set(false);
-              // Wait for Tyro's modal to be fully removed from the DOM before
-              // resolving — prevents Sale Complete from appearing while the
-              // bootbox receipt/confirmation dialog is still visible.
               this.waitForTyroModalClose().then(() => resolve(response));
             }
           }
@@ -278,6 +349,7 @@ export class TyroService {
       console.error('[TyroService] purchase() error:', err);
       const message = err instanceof Error ? err.message : 'Transaction error';
       this._status.set(message);
+      this._lastTransaction.set(null);
       return { result: 'SYSTEM ERROR' };
     }
   }
