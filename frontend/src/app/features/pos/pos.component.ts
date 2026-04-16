@@ -8,7 +8,7 @@ import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmailService } from '../../core/services/email.service';
-import { TyroService } from '../../core/services/tyro.service';
+import { TyroService, TyroTransactionResponse } from '../../core/services/tyro.service';
 import { CartItem, Product } from '../../core/models/product.model';
 import { environment } from '../../../environments/environment';
 
@@ -1601,6 +1601,7 @@ export class PosComponent implements OnInit, OnDestroy {
   emailSent      = signal(false);
   smsSending     = signal(false);
   smsSent        = signal(false);
+  lastTyroReceipt = signal<TyroTransactionResponse | null>(null);
 
   // ── Checkout computed values ───────────────────────────────────────────
   saleTotal  = computed(() => this.cartSvc.total());
@@ -1982,6 +1983,7 @@ export class PosComponent implements OnInit, OnDestroy {
 
     const amount = this.amountToPayValue();
     const response = await this.tyroSvc.purchase(amount);
+    this.lastTyroReceipt.set(response);
 
     if (response.result === 'APPROVED') {
       this.recordPayment('Eftpos', amount);
@@ -2010,6 +2012,8 @@ export class PosComponent implements OnInit, OnDestroy {
     this.receiptEmail.set('');
     this.emailSent.set(false);
     this.smsSent.set(false);
+    this.lastTyroReceipt.set(null);
+    this.tyroSvc.clearTransactionState();
   }
 
   async sendSmsReceipt() {
@@ -2065,6 +2069,30 @@ export class PosComponent implements OnInit, OnDestroy {
     this.printViaQZ(this.buildReceiptHtml());
   }
 
+  private escapeReceiptHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private formatTyroReceiptBlock(title: string, receipt?: string): string {
+    if (!receipt?.trim()) return '';
+
+    const lines = receipt
+      .split(/\r?\n/)
+      .map(line => this.escapeReceiptHtml(line))
+      .join('<br>');
+
+    return `
+      <hr>
+      <div class="eftpos-title center">${title}</div>
+      <div class="eftpos-receipt">${lines}</div>
+    `;
+  }
+
   private buildReceiptHtml(): string {
     const m   = (n: number) => '$' + n.toFixed(2);
     const now = this.payments().length ? this.payments()[0].date : new Date();
@@ -2089,6 +2117,13 @@ export class PosComponent implements OnInit, OnDestroy {
       `<tr><td>Payment (${p.method})</td><td class="right">${m(p.amount)}</td></tr>`
     ).join('');
 
+    const tyroSettings = this.tyroSvc.settings();
+    const tyroReceipt = this.lastTyroReceipt() ?? this.tyroSvc.lastTransaction();
+    const tyroReceiptText = tyroReceipt?.merchantReceipt ?? tyroReceipt?.customerReceipt;
+    const integratedReceiptHtml = tyroSettings.integratedReceipts
+      ? this.formatTyroReceiptBlock('--- MERCHANT COPY ---', tyroReceiptText)
+      : '';
+
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
 <style>
@@ -2110,6 +2145,8 @@ export class PosComponent implements OnInit, OnDestroy {
   .totals td:last-child{text-align:right}
   .bold td{font-weight:bold}
   .footer{text-align:center;font-size:8.5px;margin-top:5px}
+  .eftpos-title{font-size:8.5px;font-weight:bold;text-transform:uppercase;letter-spacing:.08em;margin:3px 0}
+  .eftpos-receipt{font-size:8px;line-height:1.45;white-space:normal;word-break:break-word}
   @media print{@page{size:80mm auto;margin:0}body{width:80mm;padding:4mm}}
 </style></head><body>
 <div class="logo">Sauers</div>
@@ -2135,6 +2172,7 @@ export class PosComponent implements OnInit, OnDestroy {
   <tr class="bold"><td>TOTAL</td><td class="right">${m(this.saleTotal())}</td></tr>
   ${pmtRows}
 </table>
+${integratedReceiptHtml}
 <hr>
 <div class="footer">Thank you for your purchase!</div>
 <script>document.fonts.ready.then(()=>{window.print();})</script>
