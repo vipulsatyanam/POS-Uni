@@ -1,5 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { CartItem, Product, ProductVariant } from '../models/product.model';
+import { CartItem, Customer, Product, ProductVariant } from '../models/product.model';
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
@@ -10,6 +10,10 @@ export class CartService {
   cartDiscountType  = signal<'percentage' | 'fixed' | null>(null);
   cartDiscountValue = signal<number | null>(null);
   cartDiscountDesc  = signal<string | null>(null);
+
+  isReturnMode        = signal<boolean>(false);
+  returnTransactionId = signal<string | null>(null);
+  selectedCustomer    = signal<Customer | null>(null);
 
   count = computed(() => this.items().reduce((sum, i) => sum + i.quantity, 0));
 
@@ -35,6 +39,13 @@ export class CartService {
   });
 
   total = computed(() => Math.max(0, this.subtotal() - this.cartDiscountAmount()));
+
+  refundTotal = computed(() =>
+    this.items().reduce((sum, i) => {
+      const linePrice = (i.productPrice + (i.variant.priceAdjustment ?? 0)) * Math.abs(i.quantity);
+      return sum + linePrice;
+    }, 0)
+  );
 
   setCartDiscount(type: 'percentage' | 'fixed', value: number, desc?: string): void {
     this.cartDiscountType.set(type);
@@ -112,9 +123,27 @@ export class CartService {
     this.persist();
   }
 
+  selectCustomer(customer: Customer | null): void {
+    this.selectedCustomer.set(customer);
+  }
+
+  loadReturnItems(items: CartItem[], transactionId: string): void {
+    this.items.set(items);
+    this.isReturnMode.set(true);
+    this.returnTransactionId.set(transactionId);
+    this.persist();
+  }
+
+  clearReturnMode(): void {
+    this.isReturnMode.set(false);
+    this.returnTransactionId.set(null);
+  }
+
   clear(): void {
     this.items.set([]);
     this.removeCartDiscount();
+    this.clearReturnMode();
+    this.selectedCustomer.set(null);
     sessionStorage.removeItem(this.STORAGE_KEY);
   }
 

@@ -140,6 +140,22 @@ export class SidebarComponent {
         <rect x="3" y="14" width="7" height="7" rx="1"/>
         <rect x="14" y="14" width="7" height="7" rx="1"/>
       `)
+    },
+    {
+      label: 'Transactions List',
+      route: '/transactions',
+      icon: this.svg(`
+        <path d="M9 12h6m-6 4h6M7 8h10M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+      `)
+    },
+    {
+      label: 'Returns / Credit',
+      route: '/returns',
+      icon: this.svg(`
+        <path d="M3 10h10a8 8 0 0 1 8 8v2"/>
+        <path d="M3 10l6 6"/>
+        <path d="M3 10l6-6"/>
+      `)
     }
   ];
 }

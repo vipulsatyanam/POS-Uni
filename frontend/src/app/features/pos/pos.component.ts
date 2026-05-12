@@ -6,10 +6,12 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
+import { CustomerService } from '../../core/services/customer.service';
+import { TransactionService } from '../../core/services/transaction.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmailService } from '../../core/services/email.service';
 import { TyroService, TyroTransactionResponse } from '../../core/services/tyro.service';
-import { CartItem, Product } from '../../core/models/product.model';
+import { CartItem, Customer, Product } from '../../core/models/product.model';
 import { environment } from '../../../environments/environment';
 
 interface Payment { method: string; amount: number; date: Date; }
@@ -189,29 +191,55 @@ interface Payment { method: string; amount: number; date: Date; }
             </div>
           </div>
 
-          <!-- Add Customer Card -->
+          <!-- Customer Card (checkout mode) -->
           <div class="flex flex-col px-5 py-4 border bg-white border-gray-200 rounded-xl shadow-xs">
 
-            <!-- No customer selected -->
-            <div class="flex items-center gap-2 text-base text-gray-500">
-              <svg class="shrink-0 size-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/>
-              </svg>
-              <span class="text-blue-600 hover:underline font-medium cursor-pointer">Add a customer</span>
-              <span>to process this sale using the following options</span>
-            </div>
+            @if (cartSvc.selectedCustomer()) {
+              <!-- Selected customer card -->
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+                     [style.background-color]="customerAvatarBg(cartSvc.selectedCustomer()!)">
+                  {{ customerInitials(cartSvc.selectedCustomer()!) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-gray-900 text-base truncate">{{ cartSvc.selectedCustomer()!.companyName }}</p>
+                  <p class="text-sm text-gray-500 truncate">{{ cartSvc.selectedCustomer()!.contactName }}</p>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600 p-1 transition-colors" title="Edit">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </button>
+                <button class="text-gray-400 hover:text-red-500 p-1 transition-colors" title="Remove" (click)="removeCustomer()">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
+                  </svg>
+                </button>
+              </div>
+            } @else {
+              <!-- No customer selected -->
+              <div class="flex items-center gap-2 text-base text-gray-500">
+                <svg class="shrink-0 size-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/>
+                </svg>
+                <span class="text-blue-600 hover:underline font-medium cursor-pointer">Add a customer</span>
+                <span>to process this sale using the following options</span>
+              </div>
+            }
 
-            <!-- Payment options toggle -->
+            <!-- Payment options toggle (always visible, enabled only when customer selected) -->
             <div
-              class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 cursor-pointer text-base font-medium text-gray-600 hover:text-gray-800 transition-colors"
-              (click)="customerPaymentsOpen.set(!customerPaymentsOpen())"
+              class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 cursor-pointer text-base font-medium transition-colors"
+              [class]="cartSvc.selectedCustomer() ? 'text-gray-600 hover:text-gray-800' : 'text-gray-300 cursor-not-allowed'"
+              (click)="cartSvc.selectedCustomer() && customerPaymentsOpen.set(!customerPaymentsOpen())"
             >
               <span>Payment options</span>
               <svg class="w-4 h-4 transition-transform shrink-0" [class.rotate-90]="customerPaymentsOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
             </div>
-            @if (customerPaymentsOpen()) {
+            @if (customerPaymentsOpen() && cartSvc.selectedCustomer()) {
               <div class="grid grid-cols-3 gap-3 mt-3">
                 <button class="py-6 px-4 text-lg font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">Store Credit</button>
                 <button class="py-6 px-4 text-lg font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">On Account</button>
@@ -541,18 +569,91 @@ interface Payment { method: string; amount: number; date: Date; }
         <!-- White card: Customer + Items + ADD row -->
         <div class="flex flex-col px-5 pt-4 border border-gray-200 bg-white rounded-xl shadow-sm flex-1 min-h-0 overflow-hidden">
 
-          <!-- Add Customer (input with filled person icon) -->
+          <!-- Customer Selector -->
           <div class="relative mb-5">
-            <div class="absolute inset-y-0 left-0 flex items-center pointer-events-none z-20 pl-3.5">
-              <svg class="shrink-0 w-6 h-6 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Add Customer"
-              class="py-4 pl-10 pr-4 block w-full border border-gray-400 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
-            />
+
+            @if (!cartSvc.selectedCustomer()) {
+              <!-- Search input -->
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 flex items-center pointer-events-none z-20 pl-3.5">
+                  <svg class="shrink-0 w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Add Customer"
+                  [value]="customerQuery()"
+                  (input)="customerQuery.set($any($event.target).value)"
+                  (focus)="customerDropdownOpen.set(true)"
+                  class="py-4 pl-10 pr-4 block w-full border border-gray-400 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <!-- Backdrop -->
+              @if (customerDropdownOpen()) {
+                <div class="fixed inset-0" style="z-index:38" (click)="customerDropdownOpen.set(false); customerQuery.set('')"></div>
+              }
+
+              <!-- Dropdown -->
+              @if (customerDropdownOpen()) {
+                <div class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-y-auto" style="z-index:39; max-height:22rem">
+                  @if (filteredCustomerGroups().length === 0) {
+                    <p class="px-4 py-6 text-center text-sm text-gray-400">No customers found</p>
+                  }
+                  @for (group of filteredCustomerGroups(); track group.type) {
+                    <div class="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">{{ group.type }}</div>
+                    @for (customer of group.items; track customer.id) {
+                      <button
+                        class="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-gray-50 text-left transition-colors"
+                        (mousedown)="pickCustomer(customer)"
+                      >
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                             [style.background-color]="customerAvatarBg(customer)">
+                          {{ customerInitials(customer) }}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="font-semibold text-gray-800 text-sm truncate">{{ customer.companyName }}</p>
+                          <p class="text-xs text-gray-500 truncate">{{ customer.contactName }}</p>
+                        </div>
+                      </button>
+                    }
+                  }
+                  <div class="border-t border-gray-100 px-4 py-2.5">
+                    <button class="flex items-center gap-2 text-blue-600 text-sm font-medium hover:text-blue-700">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 5v14M5 12h14"/>
+                      </svg>
+                      Add New Customer
+                    </button>
+                  </div>
+                </div>
+              }
+
+            } @else {
+              <!-- Selected customer card -->
+              <div class="flex items-center gap-3 px-3 py-3 border border-gray-300 rounded-lg bg-white">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+                     [style.background-color]="customerAvatarBg(cartSvc.selectedCustomer()!)">
+                  {{ customerInitials(cartSvc.selectedCustomer()!) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-gray-900 text-sm truncate">{{ cartSvc.selectedCustomer()!.companyName }}</p>
+                  <p class="text-xs text-gray-500 truncate">{{ cartSvc.selectedCustomer()!.contactName }}</p>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600 p-1 transition-colors" title="Edit">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </button>
+                <button class="text-gray-400 hover:text-red-500 p-1 transition-colors" title="Remove" (click)="removeCustomer()">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
+                  </svg>
+                </button>
+              </div>
+            }
           </div>
 
           <!-- Items list (scrollable) -->
@@ -581,18 +682,23 @@ interface Payment { method: string; amount: number; date: Date; }
                     </button>
 
                     <!-- Qty -->
-                    <span class="text-xl font-semibold text-gray-700 w-8 text-center shrink-0">{{ item.quantity }}</span>
+                    <span class="text-xl font-semibold w-8 text-center shrink-0" [class]="item.isReturn ? 'text-red-600' : 'text-gray-700'">{{ item.quantity }}</span>
 
                     <!-- Name + SKU/variant -->
                     <div class="flex-1 min-w-0">
-                      <h3 class="text-base font-semibold text-gray-800 truncate leading-tight">{{ item.productName }}</h3>
+                      <div class="flex items-center gap-1.5">
+                        <h3 class="text-base font-semibold truncate leading-tight" [class]="item.isReturn ? 'text-red-700' : 'text-gray-800'">{{ item.productName }}</h3>
+                        @if (item.isReturn) {
+                          <span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">RETURN</span>
+                        }
+                      </div>
                       <p class="text-sm text-gray-500 truncate mt-0.5">
                         {{ item.productSku }}{{ item.variant.size ? ' · ' + item.variant.size : '' }}{{ item.variant.color ? ' · ' + item.variant.color : '' }}
                       </p>
                     </div>
 
                     <!-- Line total -->
-                    <span class="text-xl font-semibold text-gray-800 shrink-0">{{ getItemBasePrice(item) * item.quantity | number:'1.2-2' }}</span>
+                    <span class="text-xl font-semibold shrink-0" [class]="item.isReturn ? 'text-red-600' : 'text-gray-800'">{{ getItemBasePrice(item) * item.quantity | number:'1.2-2' }}</span>
 
                     <!-- Trash (filled icon) -->
                     <button
@@ -724,15 +830,37 @@ interface Payment { method: string; amount: number; date: Date; }
           </div>
         </div>
 
-        <!-- Tender button -->
-        <button
-          class="bg-blue-500 text-white px-4 rounded-lg w-full hover:bg-blue-600 transition-colors mt-3 mb-3 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style="height:76px"
-          [disabled]="cartSvc.items().length === 0"
-          (click)="enterCheckout()"
-        >
-          <span class="text-base font-semibold">Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})</span>
-          <span class="text-base font-semibold">{{ cartSvc.total() | currency }}</span>
-        </button>
+        <!-- Return mode banner -->
+        @if (cartSvc.isReturnMode()) {
+          <div class="mt-3 px-4 py-2 bg-red-50 border border-red-200 rounded-lg shrink-0 flex items-center gap-2">
+            <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+            </svg>
+            <p class="text-sm text-red-700 font-medium">Return — TXN <span class="font-mono font-bold">{{ cartSvc.returnTransactionId() }}</span></p>
+            <button class="ml-auto text-xs text-red-400 hover:text-red-600 underline" (click)="cancelReturn()">Cancel</button>
+          </div>
+        }
+
+        <!-- Tender / Refund button -->
+        @if (cartSvc.isReturnMode()) {
+          <button
+            class="bg-red-600 text-white px-4 rounded-lg w-full hover:bg-red-700 transition-colors mt-3 mb-3 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style="height:76px"
+            [disabled]="cartSvc.items().length === 0"
+            (click)="processRefund()"
+          >
+            <span class="text-base font-semibold">Refund ({{ cartSvc.items().length }} Item{{ cartSvc.items().length !== 1 ? 's' : '' }})</span>
+            <span class="text-base font-semibold">-{{ cartSvc.refundTotal() | currency }}</span>
+          </button>
+        } @else {
+          <button
+            class="bg-blue-500 text-white px-4 rounded-lg w-full hover:bg-blue-600 transition-colors mt-3 mb-3 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style="height:76px"
+            [disabled]="cartSvc.items().length === 0"
+            (click)="enterCheckout()"
+          >
+            <span class="text-base font-semibold">Tender ({{ cartSvc.count() }} Item{{ cartSvc.count() !== 1 ? 's' : '' }})</span>
+            <span class="text-base font-semibold">{{ cartSvc.total() | currency }}</span>
+          </button>
+        }
       </div>
 
       </div><!-- end two-column panels -->
@@ -1498,13 +1626,22 @@ interface Payment { method: string; amount: number; date: Date; }
   `]
 })
 export class PosComponent implements OnInit, OnDestroy {
-  private productSvc = inject(ProductService);
-  private toast      = inject(ToastService);
-  private emailSvc   = inject(EmailService);
-  tyroSvc            = inject(TyroService);
-  cartSvc            = inject(CartService);
-  Math               = Math;
-  private destroy$   = new Subject<void>();
+  private productSvc  = inject(ProductService);
+  private toast       = inject(ToastService);
+  private emailSvc    = inject(EmailService);
+  private txnSvc      = inject(TransactionService);
+  customerSvc         = inject(CustomerService);
+  tyroSvc             = inject(TyroService);
+  cartSvc             = inject(CartService);
+  Math                = Math;
+  private destroy$    = new Subject<void>();
+
+  // Customer selector
+  customerDropdownOpen = signal(false);
+  customerQuery        = signal('');
+  filteredCustomerGroups = computed(() =>
+    this.customerSvc.groupedByType(this.customerSvc.search(this.customerQuery()))
+  );
 
   searchCtrl = new FormControl('');
   loading    = signal(true);
@@ -1997,10 +2134,36 @@ export class PosComponent implements OnInit, OnDestroy {
   private recordPayment(method: string, amount: number) {
     this.payments.update(p => [...p, { method, amount, date: new Date() }]);
     if (this.remaining() <= 0.005) {
+      this.saveTransaction();
       this.saleComplete.set(true);
     } else {
       this.amountToPayStr.set(this.remaining().toFixed(2));
     }
+  }
+
+  private saveTransaction(): void {
+    const items    = this.cartSvc.items();
+    const customer = this.cartSvc.selectedCustomer();
+    const allMethods = [...new Set(this.payments().map(p => p.method))].join(' + ');
+
+    this.txnSvc.recordTransaction({
+      date:          new Date(),
+      customerName:  customer?.contactName ?? 'Walk-in Customer',
+      companyName:   customer?.companyName,
+      soldBy:        this.customerSvc.currentUser.name,
+      paymentMethod: allMethods,
+      total:         this.saleTotal(),
+      status:        'Completed',
+      items:         items.map(item => ({
+        productName: item.productName,
+        sku:         item.variant.sku,
+        size:        item.variant.size,
+        color:       item.variant.color,
+        quantity:    item.quantity,
+        unitPrice:   this.getItemBasePrice(item),
+        lineTotal:   +(this.getItemBasePrice(item) * item.quantity).toFixed(2)
+      }))
+    });
   }
 
   nextSale() {
@@ -2208,6 +2371,36 @@ ${integratedReceiptHtml}
       iframe.contentWindow!.print();
       setTimeout(() => document.body.removeChild(iframe), 2000);
     });
+  }
+
+  // ── Customer helpers ──────────────────────────────────────────────────────
+  pickCustomer(customer: Customer): void {
+    this.cartSvc.selectCustomer(customer);
+    this.customerDropdownOpen.set(false);
+    this.customerQuery.set('');
+  }
+
+  removeCustomer(): void {
+    this.cartSvc.selectCustomer(null);
+    this.customerQuery.set('');
+  }
+
+  customerAvatarBg(customer: Customer): string {
+    return this.customerSvc.avatarColor(customer);
+  }
+
+  customerInitials(customer: Customer): string {
+    return this.customerSvc.initials(customer);
+  }
+
+  cancelReturn(): void {
+    this.cartSvc.clear();
+  }
+
+  processRefund(): void {
+    const txnId = this.cartSvc.returnTransactionId();
+    this.toast.success(`Refund of $${this.cartSvc.refundTotal().toFixed(2)} processed for ${txnId}`);
+    this.cartSvc.clear();
   }
 
   isInCart(productId: number): boolean {
