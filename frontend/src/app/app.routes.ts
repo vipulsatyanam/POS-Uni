@@ -24,6 +24,16 @@ export const routes: Routes = [
         path: 'settings/eftpos',
         loadComponent: () => import('./features/settings/terminal-settings/terminal-settings.component')
           .then(m => m.TerminalSettingsComponent)
+      },
+      {
+        path: 'transactions',
+        loadComponent: () => import('./features/transactions/transaction-list.component')
+          .then(m => m.TransactionListComponent)
+      },
+      {
+        path: 'returns',
+        redirectTo: 'transactions',
+        pathMatch: 'full'
       }
     ]
   },

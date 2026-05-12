@@ -62,4 +62,36 @@ export interface CartItem {
   discountType?: 'percentage' | 'fixed';
   discountValue?: number;
   discountDescription?: string;
+  isReturn?: boolean;
+}
+
+export interface Customer {
+  id: number;
+  companyName: string;
+  contactName: string;
+  email?: string;
+  phone?: string;
+  type: 'Regular' | 'VIP' | 'Wholesale';
+}
+
+export interface TransactionItem {
+  productName: string;
+  sku: string;
+  size?: string;
+  color?: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface Transaction {
+  id: string;
+  date: Date;
+  customerName: string;
+  companyName?: string;
+  soldBy: string;
+  paymentMethod: string;
+  total: number;
+  status: 'Completed' | 'Refunded' | 'Partial Refund' | 'Pending';
+  items: TransactionItem[];
 }
