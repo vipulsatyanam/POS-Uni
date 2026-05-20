@@ -1,6 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 import { Customer } from '../models/product.model';
 
+export const STAFF_LIST: CurrentUser[] = [
+  { name: 'John Doe',       email: 'jdoe@hs',      initials: 'JD', avatarColor: '#6366f1' },
+  { name: 'Jane Smith',     email: 'jsmith@hs',    initials: 'JS', avatarColor: '#8b5cf6' },
+  { name: 'Mike Johnson',   email: 'mjohnson@hs',  initials: 'MJ', avatarColor: '#14b8a6' },
+  { name: 'Sarah Williams', email: 'swilliams@hs', initials: 'SW', avatarColor: '#f97316' },
+  { name: 'David Brown',    email: 'dbrown@hs',    initials: 'DB', avatarColor: '#10b981' },
+];
+
 const AVATAR_COLORS = [
   '#10b981', // emerald
   '#8b5cf6', // violet
@@ -24,12 +32,16 @@ export interface CurrentUser {
 @Injectable({ providedIn: 'root' })
 export class CustomerService {
 
-  readonly currentUser: CurrentUser = {
+  currentUser = signal<CurrentUser>({
     name: 'James Collison',
     email: 'Preline@HS',
     initials: 'JC',
     avatarColor: '#0ea5e9'
-  };
+  });
+
+  switchUser(user: CurrentUser): void { this.currentUser.set(user); }
+
+  readonly staff = STAFF_LIST;
 
   private readonly _customers = signal<Customer[]>([
     { id: 1, companyName: 'Tech Solutions Inc',      contactName: 'John Smith',      email: 'john@techsolutions.com',    phone: '0412 345 678', type: 'Regular' },

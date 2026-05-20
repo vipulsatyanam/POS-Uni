@@ -38,7 +38,10 @@ export class CartService {
     return type === 'percentage' ? sub * (val / 100) : val;
   });
 
-  total = computed(() => Math.max(0, this.subtotal() - this.cartDiscountAmount()));
+  total = computed(() => {
+    const value = this.subtotal() - this.cartDiscountAmount();
+    return this.isReturnMode() ? Math.min(0, value) : Math.max(0, value);
+  });
 
   refundTotal = computed(() =>
     this.items().reduce((sum, i) => {
