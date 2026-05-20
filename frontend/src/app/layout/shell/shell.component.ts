@@ -29,7 +29,7 @@ import { ToastService } from '../../core/services/toast.service';
 
       <!-- Main content -->
       <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
-        @if (!isPOS()) {
+        @if (!hideHeader()) {
           <app-header (menuToggle)="toggleSidebar()" />
         }
         <main [class]="isPOS() ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6'">
@@ -78,5 +78,12 @@ export class ShellComponent {
   isPOS = computed(() => {
     const url = this.url() ?? '';
     return url === '/pos' || url.startsWith('/pos?');
+  });
+
+  hideHeader = computed(() => {
+    const url = this.url() ?? '';
+    return url === '/pos' || url.startsWith('/pos?')
+        || url.startsWith('/transactions')
+        || url.startsWith('/returns');
   });
 }

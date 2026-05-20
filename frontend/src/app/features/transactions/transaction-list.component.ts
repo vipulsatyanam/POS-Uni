@@ -9,118 +9,147 @@ import { CartService } from '../../core/services/cart.service';
 import { Transaction, TransactionItem, CartItem } from '../../core/models/product.model';
 
 interface ReturnQty { [sku: string]: number; }
+type SortField = 'id' | 'customerName' | 'companyName' | 'soldBy' | 'total';
+type SortDir   = 'asc' | 'desc';
 
 @Component({
   selector: 'app-transaction-list',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="max-w-7xl mx-auto space-y-4">
+    <div class="flex flex-col h-full">
 
-      <!-- Page header -->
-      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-        <h1 class="text-2xl font-bold text-slate-900 flex-1">Transaction List</h1>
+      <!-- Page heading -->
+      <div class="mb-5">
+        <h1 class="text-2xl font-bold text-slate-900">Transaction List</h1>
       </div>
 
-      <!-- Filters row -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <div class="flex flex-wrap items-center gap-3">
+      <!-- Filters — 3 separate full-width inputs -->
+      <div class="flex items-center gap-3 mb-4">
 
-          <!-- Search by Transaction ID -->
-          <div class="relative flex-1 min-w-[180px] max-w-xs">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
-            </svg>
-            <input
-              [formControl]="idSearch"
-              type="text"
-              placeholder="Transaction ID"
-              class="field-input pl-9 !py-2"
-            />
-          </div>
-
-          <!-- Customer search -->
-          <div class="relative flex-1 min-w-[180px] max-w-xs">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
-                 fill="currentColor" viewBox="0 0 24 24">
-              <path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/>
-            </svg>
-            <input
-              [formControl]="customerSearch"
-              type="text"
-              placeholder="Customer"
-              class="field-input pl-9 !py-2"
-            />
-          </div>
-
-          <!-- Status filter -->
-          <div class="relative min-w-[160px]">
-            <select
-              class="field-input !py-2 pr-8 appearance-none w-full"
-              [value]="statusFilter()"
-              (change)="statusFilter.set($any($event.target).value)"
-            >
-              <option value="">All Statuses</option>
-              <option value="Completed">Completed</option>
-              <option value="Refunded">Refunded</option>
-              <option value="Partial Refund">Partial Refund</option>
-              <option value="Pending">Pending</option>
-            </select>
-            <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </div>
-
+        <!-- Transaction ID search -->
+        <div class="relative flex-1">
+          <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+          </svg>
+          <input
+            [formControl]="idSearch"
+            type="text"
+            placeholder="Transaction ID"
+            class="w-full h-11 pl-9 pr-4 text-sm text-slate-700 placeholder-slate-400 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400 transition-colors"
+          />
         </div>
+
+        <!-- Customer search -->
+        <div class="relative flex-1">
+          <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0M12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          <input
+            [formControl]="customerSearch"
+            type="text"
+            placeholder="Customer"
+            class="w-full h-11 pl-9 pr-4 text-sm text-slate-700 placeholder-slate-400 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400 transition-colors"
+          />
+        </div>
+
+        <!-- Status dropdown -->
+        <div class="relative flex-1">
+          <select
+            class="w-full h-11 pl-4 pr-9 text-sm bg-white border border-slate-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400 transition-colors"
+            [class.text-slate-400]="!statusFilter()"
+            [class.text-slate-700]="statusFilter()"
+            [value]="statusFilter()"
+            (change)="statusFilter.set($any($event.target).value)"
+          >
+            <option value="">All Statuses</option>
+            <option value="Completed">Completed</option>
+            <option value="Refunded">Refunded</option>
+            <option value="Partial Refund">Partial Refund</option>
+            <option value="Pending">Pending</option>
+          </select>
+          <svg class="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+
       </div>
 
-      <!-- Table -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="data-table">
+      <!-- Table card -->
+      <div class="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div class="overflow-x-auto flex-1">
+          <table class="w-full text-sm">
             <thead>
-              <tr>
-                <th>Transaction ID</th>
-                <th>Customer Name</th>
-                <th>Company Name</th>
-                <th>Sold By</th>
-                <th>Sale Total</th>
-                <th>Status</th>
-                <th>Actions</th>
+              <tr class="border-b border-slate-200">
+                <th class="txn-th cursor-pointer select-none group" (click)="sortBy('id')">
+                  <div class="flex items-center gap-1.5">
+                    Transaction ID
+                    <ng-container *ngTemplateOutlet="arrows; context: { field: 'id' }"></ng-container>
+                  </div>
+                </th>
+                <th class="txn-th cursor-pointer select-none" (click)="sortBy('customerName')">
+                  <div class="flex items-center gap-1.5">
+                    Customer Name
+                    <ng-container *ngTemplateOutlet="arrows; context: { field: 'customerName' }"></ng-container>
+                  </div>
+                </th>
+                <th class="txn-th cursor-pointer select-none" (click)="sortBy('companyName')">
+                  <div class="flex items-center gap-1.5">
+                    Company Name
+                    <ng-container *ngTemplateOutlet="arrows; context: { field: 'companyName' }"></ng-container>
+                  </div>
+                </th>
+                <th class="txn-th cursor-pointer select-none" (click)="sortBy('soldBy')">
+                  <div class="flex items-center gap-1.5">
+                    Sold By
+                    <ng-container *ngTemplateOutlet="arrows; context: { field: 'soldBy' }"></ng-container>
+                  </div>
+                </th>
+                <th class="txn-th cursor-pointer select-none" (click)="sortBy('total')">
+                  <div class="flex items-center gap-1.5">
+                    Sale Total
+                    <ng-container *ngTemplateOutlet="arrows; context: { field: 'total' }"></ng-container>
+                  </div>
+                </th>
+                <th class="txn-th">Status</th>
+                <th class="txn-th">Actions</th>
               </tr>
             </thead>
             <tbody>
-              @if (filtered().length === 0) {
+              @if (sorted().length === 0) {
                 <tr>
-                  <td colspan="7" class="text-center py-16 text-slate-400">
-                    <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <td colspan="7" class="text-center py-20">
+                    <svg class="w-10 h-10 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    <p class="font-medium text-slate-600">No transactions found</p>
+                    <p class="text-sm font-medium text-slate-500">No transactions found</p>
+                    <p class="text-xs text-slate-400 mt-1">Try adjusting your search or filters</p>
                   </td>
                 </tr>
               }
-              @for (txn of filtered(); track txn.id) {
-                <tr class="hover:bg-slate-50 transition-colors">
-                  <td class="font-mono text-sm font-medium text-slate-700">{{ txn.id }}</td>
-                  <td class="font-semibold text-slate-800">{{ txn.customerName }}</td>
-                  <td class="text-slate-600">{{ txn.companyName || '—' }}</td>
-                  <td class="text-slate-600">{{ txn.soldBy }}</td>
-                  <td class="font-semibold text-slate-800">{{ txn.total | currency }}</td>
-                  <td>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+              @for (txn of sorted(); track txn.id) {
+                <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors duration-100">
+                  <td class="txn-td font-mono text-slate-700">{{ txn.id }}</td>
+                  <td class="txn-td font-semibold text-slate-900">{{ txn.customerName }}</td>
+                  <td class="txn-td text-slate-500">{{ txn.companyName || '—' }}</td>
+                  <td class="txn-td text-slate-500">{{ txn.soldBy }}</td>
+                  <td class="txn-td font-bold text-slate-900">{{ txn.total | currency }}</td>
+                  <td class="txn-td">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                           [ngClass]="statusClass(txn.status)">
-                      <span class="w-1.5 h-1.5 rounded-full" [ngClass]="statusDotClass(txn.status)"></span>
+                      <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" [ngClass]="statusDotClass(txn.status)"></span>
                       {{ txn.status }}
                     </span>
                   </td>
-                  <td>
+                  <td class="txn-td">
                     <button
-                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors border border-brand-200"
+                      class="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
                       (click)="openDetails(txn)"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,106 +170,133 @@ interface ReturnQty { [sku: string]: number; }
 
     </div>
 
+    <!-- Sort arrows template -->
+    <ng-template #arrows let-field="field">
+      @if (sortField() === field && sortDir() === 'asc') {
+        <svg class="w-3.5 h-3.5 text-brand-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+        </svg>
+      } @else if (sortField() === field && sortDir() === 'desc') {
+        <svg class="w-3.5 h-3.5 text-brand-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+        </svg>
+      } @else {
+        <svg class="w-3.5 h-3.5 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4M16 15l-4 4-4-4"/>
+        </svg>
+      }
+    </ng-template>
+
     <!-- ══════════════════════════════════════════════════
          MODAL 1: Transaction Details
     ══════════════════════════════════════════════════ -->
-    @if (detailsTxn()) {
-      <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+    @if (detailsTxn() && !showReturn() && !showReturnLoaded()) {
+      <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
            (click)="closeDetails()">
-        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col"
+             style="max-height: min(85vh, 720px)"
              (click)="$event.stopPropagation()">
 
           <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <h2 class="text-xl font-bold text-slate-900">Transaction Details</h2>
-            <button class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                    (click)="closeDetails()">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          <div class="flex items-center justify-between px-8 py-5 border-b border-slate-200 shrink-0">
+            <h2 class="text-lg font-semibold text-slate-900">Transaction Details</h2>
+            <button
+              class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              (click)="closeDetails()"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
           </div>
 
-          <!-- Info grid -->
-          <div class="px-6 py-5 grid grid-cols-2 gap-x-8 gap-y-4 border-b border-slate-100">
+          <!-- Info grid: 3 rows × 2 cols -->
+          <div class="px-8 py-6 grid grid-cols-2 gap-x-16 gap-y-5 shrink-0">
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Transaction ID</p>
-              <p class="font-semibold text-slate-900 font-mono">{{ detailsTxn()!.id }}</p>
+              <p class="text-xs text-slate-400 mb-1">Transaction ID</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.id }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Date &amp; Time</p>
-              <p class="font-semibold text-slate-900">{{ detailsTxn()!.date | date:'MMM d, yyyy h:mm a' }}</p>
+              <p class="text-xs text-slate-400 mb-1">Date &amp; Time</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.date | date:'MMM d, yyyy h:mm a' }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Customer</p>
-              <p class="font-semibold text-slate-900">{{ detailsTxn()!.customerName }}</p>
+              <p class="text-xs text-slate-400 mb-1">Customer</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.customerName }}</p>
+              @if (detailsTxn()!.companyName) {
+                <p class="text-xs text-slate-500 mt-0.5">{{ detailsTxn()!.companyName }}</p>
+              }
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Sold By</p>
-              <p class="font-semibold text-slate-900">{{ detailsTxn()!.soldBy }}</p>
+              <p class="text-xs text-slate-400 mb-1">Sold By</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.soldBy }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Payment Method</p>
-              <p class="font-semibold text-slate-900">{{ detailsTxn()!.paymentMethod }}</p>
+              <p class="text-xs text-slate-400 mb-1">Payment Method</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.paymentMethod }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Total</p>
-              <p class="text-xl font-bold text-brand-600">{{ detailsTxn()!.total | currency }}</p>
+              <p class="text-xs text-slate-400 mb-1">Total</p>
+              <p class="text-sm font-bold text-brand-600">{{ detailsTxn()!.total | currency }}</p>
             </div>
           </div>
 
+          <!-- Divider -->
+          <hr class="border-slate-200 shrink-0"/>
+
           <!-- Items -->
-          <div class="px-6 py-4 border-b border-slate-100">
-            <p class="text-sm font-semibold text-slate-700 mb-3">Items</p>
-            <div class="space-y-3">
-              @for (item of detailsTxn()!.items; track item.sku) {
-                <div class="bg-slate-50 rounded-lg px-4 py-3">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <p class="font-semibold text-slate-800">{{ item.productName }}</p>
-                      <p class="text-xs text-slate-500 mt-0.5">({{ item.sku }})</p>
-                      <p class="text-sm text-slate-500 mt-1">
-                        @if (item.size) { Size: {{ item.size }} }
-                        @if (item.size && item.color) { | }
-                        @if (item.color) { {{ item.color }} }
+          <div class="px-8 pt-5 pb-2 flex-1 overflow-y-auto">
+            <p class="text-sm font-semibold text-slate-900 mb-4">Items</p>
+            <div>
+              @for (item of detailsTxn()!.items; track item.sku; let last = $last) {
+                <div class="flex items-start justify-between py-4" [class.border-b]="!last" [class.border-slate-100]="!last">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-slate-900 leading-snug">{{ item.productName }}</p>
+                    <p class="text-sm font-semibold text-slate-900 mt-0.5">({{ item.sku }})</p>
+                    @if (item.size || item.color) {
+                      <p class="text-xs text-slate-400 mt-1">
+                        @if (item.size && item.color) { Size: {{ item.size }} | {{ item.color }}
+                        } @else if (item.size) { Size: {{ item.size }}
+                        } @else { {{ item.color }} }
                       </p>
-                      <p class="text-sm text-slate-500">{{ item.quantity }} × {{ item.unitPrice | currency }}</p>
-                    </div>
-                    <span class="font-semibold text-slate-800">{{ item.lineTotal | currency }}</span>
+                    }
+                    <p class="text-xs text-slate-400 mt-0.5">{{ item.quantity }} × {{ item.unitPrice | currency }}</p>
                   </div>
+                  <p class="text-sm font-bold text-slate-900 ml-8 shrink-0">{{ item.lineTotal | currency }}</p>
                 </div>
               }
             </div>
           </div>
 
           <!-- Footer actions -->
-          <div class="px-6 py-4 flex items-center gap-3">
+          <div class="flex items-center gap-2.5 px-8 py-4 border-t border-slate-200 shrink-0">
             <button
-              class="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              [disabled]="detailsTxn()?.status === 'Refunded'"
+              [title]="detailsTxn()?.status === 'Refunded' ? 'This transaction has already been refunded' : ''"
               (click)="openReturn()"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
               </svg>
               Return
             </button>
             <button
-              class="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors"
               (click)="emailReceipt()"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
                       d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
               Email Receipt
             </button>
             <button
-              class="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors"
               (click)="printReceipt()"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
                       d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
               </svg>
               Print Receipt
@@ -259,84 +315,96 @@ interface ReturnQty { [sku: string]: number; }
          MODAL 2: Create Return
     ══════════════════════════════════════════════════ -->
     @if (showReturn()) {
-      <div class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4"
-           (click)="closeReturn()">
-        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
-             (click)="$event.stopPropagation()">
+      <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col"
+             style="max-height: min(85vh, 720px)">
 
           <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-            <h2 class="text-xl font-bold text-slate-900">Create New Return</h2>
-            <button class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                    (click)="closeReturn()">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          <div class="flex items-center justify-between px-8 py-5 border-b border-slate-200 shrink-0">
+            <h2 class="text-lg font-semibold text-slate-900">Create New Return</h2>
+            <button
+              class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"
+              (click)="closeReturn()"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
           </div>
 
-          <!-- Transaction info -->
-          <div class="px-6 py-4 grid grid-cols-2 gap-x-8 gap-y-3 border-b border-slate-100 shrink-0">
+          <!-- Info grid -->
+          <div class="px-8 py-6 grid grid-cols-2 gap-x-16 gap-y-5 shrink-0">
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Transaction ID</p>
-              <p class="font-semibold text-slate-900 font-mono">{{ detailsTxn()!.id }}</p>
+              <p class="text-xs text-slate-400 mb-1">Transaction ID</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.id }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Date &amp; Time</p>
-              <p class="font-semibold text-slate-900">{{ detailsTxn()!.date | date:'MMM d, yyyy h:mm a' }}</p>
+              <p class="text-xs text-slate-400 mb-1">Date &amp; Time</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.date | date:'MMM d, yyyy h:mm a' }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Customer</p>
-              <p class="font-semibold text-slate-900">{{ detailsTxn()!.customerName }}</p>
+              <p class="text-xs text-slate-400 mb-1">Customer</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.customerName }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Sold By</p>
-              <p class="font-semibold text-slate-900">{{ detailsTxn()!.soldBy }}</p>
+              <p class="text-xs text-slate-400 mb-1">Sold By</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.soldBy }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Payment Method</p>
-              <p class="font-semibold text-slate-900">{{ detailsTxn()!.paymentMethod }}</p>
+              <p class="text-xs text-slate-400 mb-1">Payment Method</p>
+              <p class="text-sm font-semibold text-slate-900">{{ detailsTxn()!.paymentMethod }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-400 mb-0.5">Total</p>
-              <p class="text-xl font-bold text-brand-600">{{ detailsTxn()!.total | currency }}</p>
+              <p class="text-xs text-slate-400 mb-1">Total</p>
+              <p class="text-sm font-bold text-brand-600">{{ detailsTxn()!.total | currency }}</p>
             </div>
           </div>
 
-          <!-- Select items to return -->
-          <div class="px-6 py-4 flex-1 overflow-y-auto">
-            <p class="text-sm font-semibold text-slate-700 mb-3">Select Items to Return</p>
+          <!-- Divider -->
+          <hr class="border-slate-200 shrink-0"/>
+
+          <!-- Items to return -->
+          <div class="px-8 pt-5 pb-2 flex-1 overflow-y-auto">
+            <p class="text-sm font-semibold text-slate-900 mb-4">Select Items to Return</p>
 
             @if (returnError()) {
-              <div class="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
                 {{ returnError() }}
               </div>
             }
 
             <div class="space-y-3">
               @for (item of detailsTxn()!.items; track item.sku) {
-                <div class="border border-slate-200 rounded-lg px-4 py-3">
-                  <div class="flex items-center justify-between gap-4">
+                <div class="border border-slate-200 rounded-xl px-5 py-4">
+                  <div class="flex items-center gap-4">
+                    <!-- Left: product info -->
                     <div class="flex-1 min-w-0">
-                      <p class="font-semibold text-slate-800">{{ item.productName }}</p>
-                      <p class="text-xs text-slate-400 mt-0.5">SKU: {{ item.sku }}@if (item.size) { | Size: {{ item.size }}}@if (item.color) { | Color: {{ item.color }}}</p>
-                      <p class="text-sm text-slate-500 mt-0.5">Qty: {{ item.quantity }} × {{ item.unitPrice | currency }}</p>
+                      <p class="text-sm font-semibold text-slate-900">{{ item.productName }}</p>
+                      <p class="text-xs text-slate-400 mt-1">
+                        SKU: {{ item.sku }}@if (item.size) { | Size: {{ item.size }}}@if (item.color) { | Color: {{ item.color }}}
+                      </p>
+                      <p class="text-xs text-slate-400 mt-0.5">Qty: {{ item.quantity }} × {{ item.unitPrice | currency }}</p>
                     </div>
-                    <div class="flex items-center gap-3 shrink-0">
-                      <div class="flex items-center gap-2">
-                        <label class="text-sm text-slate-500 whitespace-nowrap">Return Qty:</label>
-                        <input
-                          type="number"
-                          min="0"
-                          [max]="item.quantity"
-                          step="1"
-                          class="w-16 px-2 py-1.5 text-center border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-                          [value]="getReturnQty(item.sku)"
-                          (change)="setReturnQty(item.sku, item.quantity, $any($event.target).value)"
-                        />
-                        <span class="text-sm text-slate-400">/ {{ item.quantity }}</span>
+                    <!-- Right: label + stepper + max + price -->
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="text-xs text-slate-500">Return Qty:</span>
+                      <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden">
+                        <button type="button"
+                          class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 border-r border-slate-200 font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          [disabled]="getReturnQty(item.sku) === 0"
+                          (click)="decrementQty(item.sku)">−</button>
+                        <span class="w-8 text-center text-sm font-semibold text-slate-800 select-none">{{ getReturnQty(item.sku) }}</span>
+                        <button type="button"
+                          class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 border-l border-slate-200 font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          [disabled]="getReturnQty(item.sku) >= item.quantity"
+                          (click)="incrementQty(item.sku, item.quantity)">+</button>
                       </div>
-                      <span class="font-semibold text-slate-700 w-20 text-right">{{ item.lineTotal | currency }}</span>
+                      <span class="text-xs text-slate-400">/ {{ item.quantity }}</span>
+                      <span class="text-sm font-bold text-slate-900 w-14 text-right">{{ item.lineTotal | currency }}</span>
                     </div>
                   </div>
                 </div>
@@ -345,19 +413,18 @@ interface ReturnQty { [sku: string]: number; }
           </div>
 
           <!-- Footer -->
-          <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-3 shrink-0">
+          <div class="flex items-center justify-between px-8 py-4 border-t border-slate-200 shrink-0">
             <button
               class="px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors"
               (click)="closeReturn()"
             >Back</button>
-            <div class="flex-1"></div>
             <button
-              class="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              [disabled]="returnTotal() <= 0"
+              class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              [disabled]="!hasReturnQty()"
               (click)="processReturn()"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
               </svg>
               Process Return
             </button>
@@ -370,64 +437,91 @@ interface ReturnQty { [sku: string]: number; }
          MODAL 3: Return Items Loaded
     ══════════════════════════════════════════════════ -->
     @if (showReturnLoaded()) {
-      <div class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
-        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col"
+             style="max-height: min(75vh, 600px)">
 
           <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <h2 class="text-xl font-bold text-slate-900">Return Items Loaded</h2>
+          <div class="flex items-center justify-between px-7 py-5 border-b border-slate-200 shrink-0">
+            <h2 class="text-lg font-semibold text-slate-900">Return Items Loaded</h2>
+            <button
+              class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"
+              (click)="closeDetails()"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
           </div>
 
-          <!-- Transaction tag -->
-          <div class="px-6 pt-4 pb-2">
-            <div class="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-              <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-              </svg>
-              <div>
-                <p class="text-sm font-semibold text-red-700">Transaction Return</p>
-                <p class="text-sm text-red-600">Transaction ID: <span class="font-bold font-mono">{{ detailsTxn()!.id }}</span></p>
+          <!-- Transaction Return banner -->
+          <div class="px-7 pt-5 pb-4 shrink-0">
+            <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3.5">
+              <div class="flex items-center gap-2 mb-1">
+                <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                </svg>
+                <p class="text-sm font-bold text-red-700">Transaction Return</p>
               </div>
+              <p class="text-xs text-slate-500 ml-6">
+                Transaction ID: <span class="font-bold text-red-600">{{ detailsTxn()!.id }}</span>
+              </p>
             </div>
           </div>
 
-          <!-- Items summary -->
-          <div class="px-6 py-3">
-            <p class="text-sm font-semibold text-slate-600 mb-3">Items Added as Credits:</p>
-            <div class="space-y-2">
+          <!-- Items -->
+          <div class="px-7 flex-1 overflow-y-auto">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Items Added as Credits:</p>
+            <div class="divide-y divide-slate-100">
               @for (item of returnedItems(); track item.sku) {
-                <div class="flex justify-between items-start py-2 border-b border-slate-50 last:border-0">
-                  <div>
-                    <p class="font-semibold text-slate-800">{{ item.productName }}</p>
-                    <p class="text-xs text-slate-400">{{ item.sku }}@if (item.size) { · {{ item.size }}}@if (item.color) { · {{ item.color }}}</p>
-                    <p class="text-sm text-slate-500">Qty: {{ item.quantity }}</p>
+                <div class="py-3 flex items-start justify-between gap-4">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-slate-900">{{ item.productName }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                      {{ item.sku }}@if (item.size) { · {{ item.size }}}@if (item.color) { · {{ item.color }}}
+                    </p>
+                    <p class="text-xs text-slate-400 mt-0.5">Qty: {{ item.quantity }}</p>
                   </div>
-                  <span class="font-semibold text-red-600">-{{ item.lineTotal | currency }}</span>
+                  <span class="text-sm font-bold text-red-600 shrink-0">-{{ item.lineTotal | currency }}</span>
                 </div>
               }
             </div>
           </div>
 
-          <!-- Total -->
-          <div class="px-6 py-3 border-t border-slate-100">
-            <div class="flex justify-between items-center">
-              <span class="font-bold text-slate-800">Total Credit:</span>
-              <span class="text-xl font-bold text-red-600">-{{ returnTotal() | currency }}</span>
+          <!-- Total Credit -->
+          <div class="border-t border-slate-200 px-7 py-4 shrink-0">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-slate-700">Total Credit:</span>
+              <span class="text-base font-bold text-red-600">-{{ returnTotal() | currency }}</span>
             </div>
           </div>
 
-          <!-- Continue button -->
-          <div class="px-6 py-4">
+          <!-- Continue -->
+          <div class="border-t border-slate-200 px-7 py-4 flex justify-end shrink-0">
             <button
-              class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-base transition-colors"
+              class="px-8 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
               (click)="continueToCart()"
             >Continue</button>
           </div>
         </div>
       </div>
     }
-  `
+  `,
+  styles: [`
+    :host { display: flex; flex-direction: column; height: 100%; }
+    .txn-th {
+      padding: 0.75rem 1.25rem;
+      text-align: left;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .txn-td {
+      padding: 1rem 1.25rem;
+      color: #475569;
+    }
+  `]
 })
 export class TransactionListComponent implements OnInit, OnDestroy {
   private txnSvc      = inject(TransactionService);
@@ -440,23 +534,50 @@ export class TransactionListComponent implements OnInit, OnDestroy {
   customerSearch = new FormControl('');
   statusFilter   = signal('');
 
+  sortField = signal<SortField>('id');
+  sortDir   = signal<SortDir>('asc');
+
   private idQuery       = signal('');
   private customerQuery = signal('');
 
-  detailsTxn      = signal<Transaction | null>(null);
-  showReturn      = signal(false);
+  detailsTxn       = signal<Transaction | null>(null);
+  showReturn       = signal(false);
   showReturnLoaded = signal(false);
-  returnQtys      = signal<ReturnQty>({});
-  returnError     = signal('');
-
-  returnedItems = signal<(TransactionItem & { lineTotal: number })[]>([]);
+  returnQtys       = signal<ReturnQty>({});
+  returnError      = signal('');
+  returnedItems    = signal<(TransactionItem & { lineTotal: number })[]>([]);
 
   filtered = computed(() =>
     this.txnSvc.search(this.idQuery(), this.customerQuery(), this.statusFilter())
   );
 
+  sorted = computed(() => {
+    const list  = [...this.filtered()];
+    const field = this.sortField();
+    const dir   = this.sortDir();
+    return list.sort((a, b) => {
+      let va: string | number;
+      let vb: string | number;
+      switch (field) {
+        case 'id':           va = a.id;                    vb = b.id;           break;
+        case 'customerName': va = a.customerName;          vb = b.customerName; break;
+        case 'companyName':  va = a.companyName ?? '';     vb = b.companyName ?? ''; break;
+        case 'soldBy':       va = a.soldBy;                vb = b.soldBy;       break;
+        case 'total':        va = a.total;                 vb = b.total;        break;
+        default:             va = a.id;                    vb = b.id;
+      }
+      if (va < vb) return dir === 'asc' ? -1 : 1;
+      if (va > vb) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  });
+
   returnTotal = computed(() =>
     this.returnedItems().reduce((s, i) => s + i.lineTotal, 0)
+  );
+
+  hasReturnQty = computed(() =>
+    Object.values(this.returnQtys()).some(qty => qty > 0)
   );
 
   ngOnInit(): void {
@@ -472,6 +593,15 @@ export class TransactionListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  sortBy(field: SortField): void {
+    if (this.sortField() === field) {
+      this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortField.set(field);
+      this.sortDir.set('asc');
+    }
   }
 
   openDetails(txn: Transaction): void {
@@ -494,13 +624,9 @@ export class TransactionListComponent implements OnInit, OnDestroy {
     this.showReturn.set(true);
   }
 
-  closeReturn(): void {
-    this.showReturn.set(false);
-  }
+  closeReturn(): void { this.showReturn.set(false); }
 
-  getReturnQty(sku: string): number {
-    return this.returnQtys()[sku] ?? 0;
-  }
+  getReturnQty(sku: string): number { return this.returnQtys()[sku] ?? 0; }
 
   setReturnQty(sku: string, max: number, rawValue: string): void {
     let qty = parseInt(rawValue, 10) || 0;
@@ -510,22 +636,33 @@ export class TransactionListComponent implements OnInit, OnDestroy {
     this.returnError.set('');
   }
 
+  incrementQty(sku: string, max: number): void {
+    const current = this.getReturnQty(sku);
+    if (current < max) {
+      this.returnQtys.update(prev => ({ ...prev, [sku]: current + 1 }));
+      this.returnError.set('');
+    }
+  }
+
+  decrementQty(sku: string): void {
+    const current = this.getReturnQty(sku);
+    if (current > 0) {
+      this.returnQtys.update(prev => ({ ...prev, [sku]: current - 1 }));
+    }
+  }
+
   processReturn(): void {
     const txn = this.detailsTxn();
     if (!txn) return;
-
     const selected = txn.items.filter(item => (this.returnQtys()[item.sku] ?? 0) > 0);
     if (selected.length === 0) {
       this.returnError.set('Please enter a return quantity for at least one item.');
       return;
     }
-
-    const itemsWithTotal = selected.map(item => {
+    this.returnedItems.set(selected.map(item => {
       const qty = this.returnQtys()[item.sku];
       return { ...item, quantity: qty, lineTotal: +(item.unitPrice * qty).toFixed(2) };
-    });
-
-    this.returnedItems.set(itemsWithTotal);
+    }));
     this.showReturn.set(false);
     this.showReturnLoaded.set(true);
   }
@@ -533,33 +670,21 @@ export class TransactionListComponent implements OnInit, OnDestroy {
   continueToCart(): void {
     const txn = this.detailsTxn();
     if (!txn) return;
-
     const cartItems: CartItem[] = this.returnedItems().map((item, idx) => ({
       id: `return-${txn.id}-${idx}`,
       productId: -(idx + 1),
       productName: item.productName,
       productSku: item.sku,
       productPrice: item.unitPrice,
-      variant: {
-        id: -(idx + 1),
-        sku: item.sku,
-        size: item.size,
-        color: item.color,
-        stock: 0,
-        priceAdjustment: 0
-      },
+      variant: { id: -(idx + 1), sku: item.sku, size: item.size, color: item.color, stock: 0, priceAdjustment: 0 },
       quantity: -item.quantity,
       isReturn: true
     }));
-
     this.cartSvc.loadReturnItems(cartItems, txn.id);
-
-    // auto-select the matching customer from the transaction
     const matched = this.customerSvc.customers().find(c =>
       c.contactName === txn.customerName || c.companyName === txn.companyName
     );
     if (matched) this.cartSvc.selectCustomer(matched);
-
     this.closeDetails();
     this.router.navigate(['/pos']);
   }

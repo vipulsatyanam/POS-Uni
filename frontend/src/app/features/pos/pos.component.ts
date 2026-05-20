@@ -6,7 +6,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
-import { CustomerService } from '../../core/services/customer.service';
+import { CustomerService, STAFF_LIST } from '../../core/services/customer.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmailService } from '../../core/services/email.service';
@@ -81,9 +81,9 @@ interface Payment { method: string; amount: number; date: Date; }
             <div class="border-t border-gray-300 mt-6 pt-4">
               <div class="flex justify-between items-center mb-6">
                 <span class="text-2xl font-bold text-gray-900">SALE TOTAL
-                  <span class="text-base font-normal text-gray-500 ml-1">{{ cartSvc.count() }} item{{ cartSvc.count() !== 1 ? 's' : '' }}</span>
+                  <span class="text-base font-normal text-gray-500 ml-1">{{ cartSvc.items().length }} item{{ cartSvc.items().length !== 1 ? 's' : '' }}</span>
                 </span>
-                <span class="text-3xl font-bold text-gray-900">{{ saleTotal() | currency }}</span>
+                <span class="text-3xl font-bold" [class]="cartSvc.isReturnMode() ? 'text-red-600' : 'text-gray-900'">{{ saleTotal() | currency }}</span>
               </div>
               <!-- Partial payments -->
               @if (payments().length > 0) {
@@ -116,15 +116,23 @@ interface Payment { method: string; amount: number; date: Date; }
 
             <!-- Amount to Pay -->
             <div class="flex-wrap mb-6">
-              <label class="block text-base font-semibold text-gray-700 mb-2">AMOUNT TO PAY</label>
+              <label class="block text-base font-semibold mb-2"
+                     [class]="cartSvc.isReturnMode() ? 'text-red-600' : 'text-gray-700'">
+                {{ cartSvc.isReturnMode() ? 'AMOUNT TO REFUND' : 'AMOUNT TO PAY' }}
+              </label>
               <input
                 type="text"
-                class="w-full text-4xl font-bold text-left rounded-lg px-6 py-4 bg-white border-2 border-gray-300 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 cursor-text"
-                [value]="amountToPayStr() ? '$' + amountToPayStr() : ''"
+                class="w-full text-4xl font-bold text-left rounded-lg px-6 py-4 bg-white border-2 focus:outline-none focus:ring-2 cursor-text"
+                [class]="cartSvc.isReturnMode()
+                  ? 'border-red-300 text-red-600 focus:border-red-500 focus:ring-red-200'
+                  : 'border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-200'"
+                [value]="amountToPayStr() ? (cartSvc.isReturnMode() ? '-$' : '$') + amountToPayStr() : ''"
                 (focus)="$any($event.target).select()"
                 (input)="setAmountToPay($any($event.target).value)"
               />
-              <p class="text-base text-gray-500 pt-2">Edit to make partial payment</p>
+              <p class="text-base text-gray-500 pt-2">
+                {{ cartSvc.isReturnMode() ? 'Amount to return to customer' : 'Edit to make partial payment' }}
+              </p>
               @if (amountWarning()) {
                 <div class="bg-red-50 border border-red-200 text-sm text-red-800 rounded-lg p-4 mt-2" role="alert">
                   <div class="flex">
@@ -272,15 +280,19 @@ interface Payment { method: string; amount: number; date: Date; }
 
             <!-- Body -->
             <div class="p-8 space-y-6">
-              <!-- Amount to Pay -->
+              <!-- Amount to Pay / Refund -->
               <div class="text-center">
-                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Amount to Pay</p>
-                <p class="text-4xl font-bold text-gray-900">{{ cashAmountDue() | currency }}</p>
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  {{ cartSvc.isReturnMode() ? 'Amount to Refund' : 'Amount to Pay' }}
+                </p>
+                <p class="text-4xl font-bold" [class]="cartSvc.isReturnMode() ? 'text-red-600' : 'text-gray-900'">{{ cashAmountDue() | currency }}</p>
               </div>
 
-              <!-- Amount Given by Customer -->
+              <!-- Amount Given by Customer / Amount Returned -->
               <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Amount Given by Customer</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                  {{ cartSvc.isReturnMode() ? 'Cash Returned to Customer' : 'Amount Given by Customer' }}
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -292,11 +304,13 @@ interface Payment { method: string; amount: number; date: Date; }
                 />
               </div>
 
-              <!-- Change to Give -->
-              <div class="bg-gray-50 rounded-xl p-5 text-center">
-                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Change to Give</p>
-                <p class="text-4xl font-bold text-green-600">{{ cashChange() | currency }}</p>
-              </div>
+              <!-- Change / Difference -->
+              @if (!cartSvc.isReturnMode()) {
+                <div class="bg-gray-50 rounded-xl p-5 text-center">
+                  <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Change to Give</p>
+                  <p class="text-4xl font-bold text-green-600">{{ cashChange() | currency }}</p>
+                </div>
+              }
             </div>
 
             <!-- Footer -->
@@ -327,12 +341,57 @@ interface Payment { method: string; amount: number; date: Date; }
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                 </svg>
               </div>
-              <h2 class="text-3xl font-bold text-gray-900 mb-2">Sale Complete</h2>
-              <p class="text-gray-500 text-lg">Payment received successfully</p>
+              <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ cartSvc.isReturnMode() ? 'Refund Complete' : 'Sale Complete' }}</h2>
+              <p class="text-gray-500 text-lg">{{ cartSvc.isReturnMode() ? 'Refund processed successfully' : 'Payment received successfully' }}</p>
             </div>
-            <!-- Receipt Options -->
-            <div class="px-8 pb-8 space-y-3">
-              <p class="text-xl font-bold text-orange-500 text-center">"Would you like the receipt sent to your phone?"</p>
+            <!-- Receipt Preview -->
+            <div class="mx-6 mb-3 border border-gray-200 rounded-xl overflow-hidden">
+              <div class="max-h-72 overflow-y-auto p-4 font-mono text-xs text-gray-900 bg-white leading-5">
+                <!-- Store header -->
+                <div class="text-center mb-2">
+                  <p class="font-bold text-sm">Sauers Uniforms</p>
+                  <p>202 John St, Maryborough QLD 4650</p>
+                  <p>2/143 Old Maryborough Rd, Pialba QLD 4655</p>
+                  <p>(07) 4122 3990 | (07) 4128 1038</p>
+                  <p>accounts&#64;sauersuniforms.com.au</p>
+                </div>
+                <div class="border-t border-dashed border-gray-400 my-2"></div>
+                <p>Receipt:&nbsp;&nbsp;{{ receiptNo() }}</p>
+                <p>Date:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ completedTxnDate() | date:'dd/MM/yyyy' }}&nbsp;&nbsp;&nbsp;Time:&nbsp;{{ completedTxnDate() | date:'hh:mm a' }}</p>
+                <div class="border-t border-dashed border-gray-400 my-2"></div>
+                <!-- Items header -->
+                <div class="flex font-bold border-b border-dashed border-gray-400 pb-1 mb-1">
+                  <span class="flex-1">Item</span>
+                  <span class="w-8 text-center">Qty</span>
+                  <span class="w-20 text-right">Price</span>
+                </div>
+                <!-- Items -->
+                @for (item of cartSvc.items(); track item.id) {
+                  <div class="flex mb-0.5">
+                    <span class="flex-1 pr-2">{{ item.productName }}@if (item.variant.size || item.variant.color) { · }@if (item.variant.size) {{{ item.variant.size }}}@if (item.variant.size && item.variant.color) { · }@if (item.variant.color) {{{ item.variant.color }}}</span>
+                    <span class="w-8 text-center">{{ item.quantity }}</span>
+                    <span class="w-20 text-right">{{ getItemBasePrice(item) * item.quantity | currency }}</span>
+                  </div>
+                }
+                <div class="border-t border-dashed border-gray-400 my-2"></div>
+                <!-- Totals -->
+                <div class="flex justify-between"><span>Subtotal (ex GST)</span><span>{{ subtotal() | currency }}</span></div>
+                <div class="flex justify-between"><span>GST (10%)</span><span>{{ gst() | currency }}</span></div>
+                <div class="flex justify-between font-bold"><span>TOTAL</span><span>{{ saleTotal() | currency }}</span></div>
+                @for (pmt of payments(); track $index) {
+                  <div class="flex justify-between"><span>Payment</span><span>{{ pmt.method }}</span></div>
+                }
+                <div class="border-t border-dashed border-gray-400 my-2"></div>
+                <div class="text-center">
+                  <p>Thank you for your purchase!</p>
+                  <p>Returns within 30 days with receipt.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Send receipt or print -->
+            <div class="px-6 pb-6 space-y-3">
+              <p class="text-sm font-semibold text-gray-500 text-center uppercase tracking-wide">Send receipt or print</p>
 
               <!-- SMS -->
               <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
@@ -374,11 +433,11 @@ interface Payment { method: string; amount: number; date: Date; }
                 }
               </div>
 
-              <!-- Next Sale -->
+              <!-- Next Sale / Done -->
               <button
                 class="w-full mt-1 py-4 px-6 text-lg font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all"
                 (click)="nextSale()"
-              >Next Sale</button>
+              >{{ cartSvc.isReturnMode() ? 'Done' : 'Next Sale' }}</button>
 
               <!-- Print Receipt -->
               <button
@@ -662,11 +721,34 @@ interface Payment { method: string; amount: number; date: Date; }
               <div class="text-center text-gray-400 py-10">No items added yet</div>
             } @else {
               @for (item of cartSvc.items(); track item.id) {
+                <!-- Return item row -->
+                @if (item.isReturn) {
+                  <div class="mx-1 my-2 rounded-xl bg-red-50 border border-red-100 px-4 py-3 flex items-center gap-3">
+                    <!-- Qty -->
+                    <span class="text-base font-semibold text-red-600 w-6 text-center shrink-0">{{ item.quantity }}</span>
+                    <!-- Name + variant -->
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-base font-semibold text-gray-900 truncate">{{ item.productName }}</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide bg-red-100 text-red-600 border border-red-200">RETURN</span>
+                      </div>
+                      <p class="text-sm text-gray-500 mt-0.5 truncate">{{ item.variant.size }}@if (item.variant.size && item.variant.color) { · }{{ item.variant.color }}</p>
+                    </div>
+                    <!-- Price -->
+                    <span class="text-base font-semibold text-red-600 shrink-0">{{ getItemBasePrice(item) * item.quantity | number:'1.2-2' }}</span>
+                    <!-- Trash -->
+                    <button class="shrink-0 text-red-300 hover:text-red-600 transition-colors ml-1" (click)="cartSvc.remove(item.id)">
+                      <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
+                      </svg>
+                    </button>
+                  </div>
+                } @else {
                 <div class="border-b border-gray-200 py-3 px-2 hover:bg-gray-50 transition-colors">
 
                   <!-- Accordion header -->
                   <div
-                    class="flex items-center gap-2 cursor-pointer select-none"
+                    class="flex items-center gap-2 select-none cursor-pointer"
                     (click)="toggleCartItem(item.id)"
                   >
                     <!-- Chevron -->
@@ -682,25 +764,20 @@ interface Payment { method: string; amount: number; date: Date; }
                     </button>
 
                     <!-- Qty -->
-                    <span class="text-xl font-semibold w-8 text-center shrink-0" [class]="item.isReturn ? 'text-red-600' : 'text-gray-700'">{{ item.quantity }}</span>
+                    <span class="text-xl font-semibold w-8 text-center shrink-0 text-gray-700">{{ item.quantity }}</span>
 
                     <!-- Name + SKU/variant -->
                     <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-1.5">
-                        <h3 class="text-base font-semibold truncate leading-tight" [class]="item.isReturn ? 'text-red-700' : 'text-gray-800'">{{ item.productName }}</h3>
-                        @if (item.isReturn) {
-                          <span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">RETURN</span>
-                        }
-                      </div>
+                      <h3 class="text-base font-semibold truncate leading-tight text-gray-800">{{ item.productName }}</h3>
                       <p class="text-sm text-gray-500 truncate mt-0.5">
                         {{ item.productSku }}{{ item.variant.size ? ' · ' + item.variant.size : '' }}{{ item.variant.color ? ' · ' + item.variant.color : '' }}
                       </p>
                     </div>
 
                     <!-- Line total -->
-                    <span class="text-xl font-semibold shrink-0" [class]="item.isReturn ? 'text-red-600' : 'text-gray-800'">{{ getItemBasePrice(item) * item.quantity | number:'1.2-2' }}</span>
+                    <span class="text-xl font-semibold shrink-0 text-gray-800">{{ getItemBasePrice(item) * item.quantity | number:'1.2-2' }}</span>
 
-                    <!-- Trash (filled icon) -->
+                    <!-- Trash -->
                     <button
                       class="shrink-0 text-gray-500 hover:text-red-700 transition-colors"
                       (click)="$event.stopPropagation(); cartSvc.remove(item.id)"
@@ -712,7 +789,7 @@ interface Payment { method: string; amount: number; date: Date; }
                   </div>
 
                   <!-- Expanded body -->
-                  @if (expandedCartItemId() === item.id) {
+                  @if (expandedCartItemId() === item.id && !cartSvc.isReturnMode()) {
                     <div class="mt-4 pt-4 border-t border-gray-100">
 
                       <!-- 3-column grid: Quantity | Price | Discount(%) -->
@@ -780,6 +857,7 @@ interface Payment { method: string; amount: number; date: Date; }
                     </div>
                   }
                 </div>
+                } <!-- end @else (normal item) -->
               }
             }
             @if (cartSvc.cartDiscountValue()) {
@@ -808,45 +886,36 @@ interface Payment { method: string; amount: number; date: Date; }
             }
           </div>
 
-          <!-- ADD | Discount | Promo Code | Note -->
-          <div class="shrink-0 py-4 border-t border-gray-100">
-            <div class="flex flex-nowrap justify-between items-center">
-              <h2 class="text-gray-800 font-bold">ADD</h2>
-              <div class="flex items-center gap-x-5">
-                <p
-                  class="text-gray-500 font-normal cursor-pointer hover:text-gray-700"
-                  (click)="openDiscountModal()"
-                >Discount</p>
-                <p
-                  class="text-gray-500 font-normal cursor-pointer hover:text-gray-700"
-                  (click)="openPromoCodeModal()"
-                >Promo Code</p>
-                <p
-                  class="text-blue-500 font-normal cursor-pointer hover:text-gray-700"
-                  (click)="openNoteModal()"
-                >Note</p>
+          <!-- ADD | Discount | Promo Code | Note (hidden in return mode) -->
+          @if (!cartSvc.isReturnMode()) {
+            <div class="shrink-0 py-4 border-t border-gray-100">
+              <div class="flex flex-nowrap justify-between items-center">
+                <h2 class="text-gray-800 font-bold">ADD</h2>
+                <div class="flex items-center gap-x-5">
+                  <p
+                    class="text-gray-500 font-normal cursor-pointer hover:text-gray-700"
+                    (click)="openDiscountModal()"
+                  >Discount</p>
+                  <p
+                    class="text-gray-500 font-normal cursor-pointer hover:text-gray-700"
+                    (click)="openPromoCodeModal()"
+                  >Promo Code</p>
+                  <p
+                    class="text-blue-500 font-normal cursor-pointer hover:text-gray-700"
+                    (click)="openNoteModal()"
+                  >Note</p>
+                </div>
               </div>
             </div>
-          </div>
+          }
         </div>
-
-        <!-- Return mode banner -->
-        @if (cartSvc.isReturnMode()) {
-          <div class="mt-3 px-4 py-2 bg-red-50 border border-red-200 rounded-lg shrink-0 flex items-center gap-2">
-            <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-            </svg>
-            <p class="text-sm text-red-700 font-medium">Return — TXN <span class="font-mono font-bold">{{ cartSvc.returnTransactionId() }}</span></p>
-            <button class="ml-auto text-xs text-red-400 hover:text-red-600 underline" (click)="cancelReturn()">Cancel</button>
-          </div>
-        }
 
         <!-- Tender / Refund button -->
         @if (cartSvc.isReturnMode()) {
           <button
             class="bg-red-600 text-white px-4 rounded-lg w-full hover:bg-red-700 transition-colors mt-3 mb-3 flex justify-between items-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style="height:76px"
             [disabled]="cartSvc.items().length === 0"
-            (click)="processRefund()"
+            (click)="enterCheckout()"
           >
             <span class="text-base font-semibold">Refund ({{ cartSvc.items().length }} Item{{ cartSvc.items().length !== 1 ? 's' : '' }})</span>
             <span class="text-base font-semibold">-{{ cartSvc.refundTotal() | currency }}</span>
@@ -1618,6 +1687,43 @@ interface Payment { method: string; amount: number; date: Date; }
         </div>
       </div>
     }
+
+    <!-- ── Staff Picker Modal ──────────────────────────────────────────────── -->
+    @if (staffPickerModal()) {
+      <div class="fixed inset-0 bg-black/50 z-[9000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-8">
+          <div class="flex gap-10 items-start">
+            <!-- Current user (left) -->
+            <div class="flex flex-col items-center gap-3 w-32 shrink-0">
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Current User</p>
+              <div class="w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold text-white"
+                   [style.background-color]="customerSvc.currentUser().avatarColor">
+                {{ customerSvc.currentUser().initials }}
+              </div>
+              <p class="text-sm font-semibold text-slate-700 text-center leading-tight">{{ customerSvc.currentUser().name }}</p>
+              <button class="text-sm font-medium text-orange-500 hover:text-orange-600 transition-colors mt-1"
+                      (click)="staffPickerModal.set(false)">Log out</button>
+            </div>
+
+            <!-- Staff grid (right) -->
+            <div class="grid grid-cols-3 gap-5 flex-1">
+              @for (staff of staffList; track staff.name) {
+                <button
+                  class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 transition-colors"
+                  (click)="customerSvc.switchUser(staff); staffPickerModal.set(false)"
+                >
+                  <div class="w-14 h-14 rounded-full flex items-center justify-center text-base font-bold text-white border-2 border-transparent hover:border-brand-400 transition-colors"
+                       [style.background-color]="staff.avatarColor">
+                    {{ staff.initials }}
+                  </div>
+                  <span class="text-xs font-medium text-slate-700 text-center leading-tight">{{ staff.name }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .spinner {
@@ -1731,7 +1837,11 @@ export class PosComponent implements OnInit, OnDestroy {
   selectedPaymentMethod = signal('');
 
   // Sale complete
-  saleComplete   = signal(false);
+  saleComplete    = signal(false);
+  completedTxnId  = signal<string>('');
+  completedTxnDate = signal<Date>(new Date());
+  staffPickerModal = signal(false);
+  readonly staffList = STAFF_LIST;
   receiptPhone   = signal('');
   receiptEmail   = signal('');
   emailSending   = signal(false);
@@ -1740,12 +1850,28 @@ export class PosComponent implements OnInit, OnDestroy {
   smsSent        = signal(false);
   lastTyroReceipt = signal<TyroTransactionResponse | null>(null);
 
+  receiptNo = computed(() => {
+    const d   = this.completedTxnDate();
+    const dd  = d.getDate().toString().padStart(2, '0');
+    const mm  = (d.getMonth() + 1).toString().padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const seq = this.completedTxnId().replace('TXN-', '');
+    return `RCT-${dd}${mm}${yyyy}-${seq}`;
+  });
+
   // ── Checkout computed values ───────────────────────────────────────────
   saleTotal  = computed(() => this.cartSvc.total());
   subtotal   = computed(() => this.saleTotal() / 1.1);
   gst        = computed(() => this.saleTotal() - this.subtotal());
   totalPaid  = computed(() => this.payments().reduce((s, p) => s + p.amount, 0));
-  remaining  = computed(() => Math.max(0, this.saleTotal() - this.totalPaid()));
+  remaining  = computed(() => {
+    const total = this.saleTotal();
+    const paid  = this.totalPaid();
+    // For refunds (negative total) track remaining as positive amount still to refund
+    return total < 0
+      ? Math.max(0, Math.abs(total) - paid)
+      : Math.max(0, total - paid);
+  });
 
   amountToPayValue = computed(() => {
     const v = parseFloat(this.amountToPayStr());
@@ -2090,7 +2216,8 @@ export class PosComponent implements OnInit, OnDestroy {
 
   enterCheckout() {
     this.payments.set([]);
-    this.amountToPayStr.set(this.saleTotal().toFixed(2));
+    // For returns the total is negative — seed the input with the absolute refund amount
+    this.amountToPayStr.set(Math.abs(this.saleTotal()).toFixed(2));
     this.checkoutMode.set(true);
   }
 
@@ -2101,7 +2228,8 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   openCashModal() {
-    this.cashGiven.set(0);
+    // In refund mode, pre-fill with the exact amount so cashier just confirms
+    this.cashGiven.set(this.cartSvc.isReturnMode() ? this.cashAmountDue() : 0);
     this.cashModal.set(true);
   }
 
@@ -2146,14 +2274,16 @@ export class PosComponent implements OnInit, OnDestroy {
     const customer = this.cartSvc.selectedCustomer();
     const allMethods = [...new Set(this.payments().map(p => p.method))].join(' + ');
 
-    this.txnSvc.recordTransaction({
-      date:          new Date(),
+    const isRefund = this.cartSvc.isReturnMode();
+    const now = new Date();
+    const txn = this.txnSvc.recordTransaction({
+      date:          now,
       customerName:  customer?.contactName ?? 'Walk-in Customer',
       companyName:   customer?.companyName,
-      soldBy:        this.customerSvc.currentUser.name,
+      soldBy:        this.customerSvc.currentUser().name,
       paymentMethod: allMethods,
       total:         this.saleTotal(),
-      status:        'Completed',
+      status:        isRefund ? 'Refunded' : 'Completed',
       items:         items.map(item => ({
         productName: item.productName,
         sku:         item.variant.sku,
@@ -2164,6 +2294,8 @@ export class PosComponent implements OnInit, OnDestroy {
         lineTotal:   +(this.getItemBasePrice(item) * item.quantity).toFixed(2)
       }))
     });
+    this.completedTxnId.set(txn.id);
+    this.completedTxnDate.set(now);
   }
 
   nextSale() {
@@ -2177,6 +2309,7 @@ export class PosComponent implements OnInit, OnDestroy {
     this.smsSent.set(false);
     this.lastTyroReceipt.set(null);
     this.tyroSvc.clearTransactionState();
+    this.staffPickerModal.set(true);
   }
 
   async sendSmsReceipt() {
