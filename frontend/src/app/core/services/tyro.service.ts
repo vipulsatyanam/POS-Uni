@@ -8,7 +8,7 @@ export interface TyroSettings {
   printMerchantCopy: boolean;
 }
 
-export type TyroTransactionResult = 'APPROVED' | 'CANCELLED' | 'DECLINED' | 'SYSTEM ERROR';
+export type TyroTransactionResult = 'APPROVED' | 'CANCELLED' | 'DECLINED' | 'REVERSED' | 'SYSTEM ERROR';
 
 export interface TyroTransactionResponse {
   result: TyroTransactionResult;
@@ -288,7 +288,7 @@ export class TyroService {
     }
   }
 
-  // ── Purchase ───────────────────────────────────────────────────────────────
+  // ── Purchase & Refund ──────────────────────────────────────────────────────
 
   private waitForTyroModalClose(): Promise<void> {
     return new Promise((resolve) => {
@@ -348,6 +348,49 @@ export class TyroService {
       this._loading.set(false);
       console.error('[TyroService] purchase() error:', err);
       const message = err instanceof Error ? err.message : 'Transaction error';
+      this._status.set(message);
+      this._lastTransaction.set(null);
+      return { result: 'SYSTEM ERROR' };
+    }
+  }
+
+  async refund(amountDollars: number): Promise<TyroTransactionResponse> {
+    this._loading.set(true);
+    this._status.set('Initiating refund…');
+
+    try {
+      const settings = this._settings();
+      const client = this.getClient() as {
+        initiateRefund: (
+          opts: { amount: string; integratedReceipt: boolean },
+          callbacks: {
+            receiptCallback: (r: unknown) => void;
+            transactionCompleteCallback: (r: TyroTransactionResponse) => void;
+          }
+        ) => void
+      };
+
+      const amountCents = Math.round(amountDollars * 100);
+      this._lastTransaction.set(null);
+
+      return await new Promise((resolve) => {
+        client.initiateRefund(
+          { amount: String(amountCents), integratedReceipt: settings.integratedReceipts },
+          {
+            receiptCallback: (_r) => {},
+            transactionCompleteCallback: (response) => {
+              this._status.set(`Refund: ${response.result}`);
+              this._lastTransaction.set(response);
+              this._loading.set(false);
+              this.waitForTyroModalClose().then(() => resolve(response));
+            }
+          }
+        );
+      });
+    } catch (err) {
+      this._loading.set(false);
+      console.error('[TyroService] refund() error:', err);
+      const message = err instanceof Error ? err.message : 'Refund error';
       this._status.set(message);
       this._lastTransaction.set(null);
       return { result: 'SYSTEM ERROR' };

@@ -2246,16 +2246,44 @@ export class PosComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const amount = this.amountToPayValue();
-    const response = await this.tyroSvc.purchase(amount);
+    const amount   = this.amountToPayValue();
+    const isRefund = this.cartSvc.isReturnMode();
+
+    // Validate refund does not exceed the original transaction total (iClient.Retail.Refund LimitCheck)
+    if (isRefund) {
+      const txnId = this.cartSvc.returnTransactionId();
+      if (txnId) {
+        const originalTxn = this.txnSvc.getById(txnId);
+        if (originalTxn && amount > Math.abs(originalTxn.total) + 0.005) {
+          this.amountWarning.set(
+            `Refund amount cannot exceed the original sale total of $${Math.abs(originalTxn.total).toFixed(2)}`
+          );
+          return;
+        }
+      }
+    }
+
+    // Use initiateRefund for refunds, initiatePurchase for sales (iClient.Retail.Refund-1 / LimitCheck)
+    const response = isRefund
+      ? await this.tyroSvc.refund(amount)
+      : await this.tyroSvc.purchase(amount);
+
     this.lastTyroReceipt.set(response);
 
     if (response.result === 'APPROVED') {
       this.recordPayment('Eftpos', amount);
-    } else if (response.result === 'CANCELLED') {
-      this.toast.show('info', 'EFTPOS payment cancelled.');
     } else {
-      this.toast.show('error', `EFTPOS payment ${response.result.toLowerCase()}. Please try again.`);
+      // Non-approved: show result message
+      const label = response.result; // DECLINED | CANCELLED | REVERSED | SYSTEM ERROR
+      this.toast.show(
+        label === 'CANCELLED' ? 'info' : 'error',
+        `EFTPOS ${isRefund ? 'refund' : 'payment'} ${label}.`
+      );
+      // Print receipt showing the result (DECLINED/CANCELLED/REVERSED) — iClient.Retail.Integrated-Receipt-9
+      if (this.tyroSvc.settings().integratedReceipts &&
+          (response.merchantReceipt || response.customerReceipt)) {
+        this.printReceipt();
+      }
     }
   }
 
