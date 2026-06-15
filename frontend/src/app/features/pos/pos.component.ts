@@ -2212,6 +2212,18 @@ export class PosComponent implements OnInit, OnDestroy {
 
   setAmountToPay(val: string) {
     this.amountToPayStr.set(val.replace(/[^0-9.]/g, ''));
+    if (this.cartSvc.isReturnMode()) {
+      const raw = parseFloat(this.amountToPayStr());
+      const txnId = this.cartSvc.returnTransactionId();
+      if (txnId && !isNaN(raw)) {
+        const originalTxn = this.txnSvc.getById(txnId);
+        if (originalTxn && raw > Math.abs(originalTxn.total) + 0.005) {
+          this.amountWarning.set(`Refund amount cannot exceed the original sale total of $${Math.abs(originalTxn.total).toFixed(2)}`);
+        } else {
+          this.amountWarning.set('');
+        }
+      }
+    }
   }
 
   enterCheckout() {
@@ -2250,13 +2262,15 @@ export class PosComponent implements OnInit, OnDestroy {
     const isRefund = this.cartSvc.isReturnMode();
 
     // Validate refund does not exceed the original transaction total (iClient.Retail.Refund LimitCheck)
+    // Use the raw typed value — amountToPayValue() silently caps, which would bypass this check.
     if (isRefund) {
+      const rawAmount = parseFloat(this.amountToPayStr()) || this.remaining();
       const txnId = this.cartSvc.returnTransactionId();
       if (txnId) {
         const originalTxn = this.txnSvc.getById(txnId);
-        if (originalTxn && amount > Math.abs(originalTxn.total) + 0.005) {
+        if (originalTxn && rawAmount > Math.abs(originalTxn.total) + 0.005) {
           this.amountWarning.set(
-            `Refund amount cannot exceed the original sale total of $${Math.abs(originalTxn.total).toFixed(2)}`
+            `Refund amount $${rawAmount.toFixed(2)} cannot exceed the original sale total of $${Math.abs(originalTxn.total).toFixed(2)}`
           );
           return;
         }
