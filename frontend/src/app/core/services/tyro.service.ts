@@ -17,6 +17,7 @@ export interface TyroTransactionResponse {
   elidedPan?: string;
   customerReceipt?: string;
   merchantReceipt?: string;
+  requiresSignatureVerification?: boolean;
 }
 
 const STORAGE_KEY = 'tyro_settings';
@@ -314,7 +315,7 @@ export class TyroService {
       const settings = this._settings();
       const client = this.getClient() as {
         initiatePurchase: (
-          opts: { amount: string; cashout: string; integratedReceipt: boolean },
+          opts: { amount: string; cashout: string; integratedReceipt: boolean; enableSurcharge: boolean },
           callbacks: {
             receiptCallback: (r: unknown) => void;
             transactionCompleteCallback: (r: TyroTransactionResponse) => void;
@@ -330,7 +331,8 @@ export class TyroService {
           {
             amount: String(amountCents),
             cashout: '0',
-            integratedReceipt: settings.integratedReceipts
+            integratedReceipt: settings.integratedReceipts,
+            enableSurcharge: false
           },
           {
             receiptCallback: (_r) => { /* receipt data comes via transactionCompleteCallback */ },

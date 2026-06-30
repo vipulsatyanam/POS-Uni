@@ -1688,6 +1688,58 @@ interface Payment { method: string; amount: number; date: Date; }
       </div>
     }
 
+    <!-- ── Signature Verification Modal ───────────────────────────────────── -->
+    @if (signatureModal()) {
+      <div class="fixed inset-0 bg-black/60 z-[9500] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col" style="max-height: min(90vh, 640px)">
+
+          <!-- Header -->
+          <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-200 shrink-0">
+            <div class="w-11 h-11 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15.232 5.232l3.536 3.536M9 13l6.5-6.5a2.121 2.121 0 013 3L12 16H9v-3z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Signature Verification Required</h3>
+              <p class="text-sm text-slate-500 mt-0.5">Compare the signature on the receipt with the customer's card</p>
+            </div>
+          </div>
+
+          <!-- Merchant receipt preview -->
+          <div class="flex-1 overflow-y-auto px-6 py-4">
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Merchant Receipt</p>
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+              <pre class="text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">{{ lastTyroReceipt()?.merchantReceipt }}</pre>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="px-6 py-4 border-t border-slate-200 shrink-0">
+            <p class="text-sm font-medium text-slate-600 mb-3 text-center">Does the signature match the card?</p>
+            <div class="flex gap-3">
+              <button
+                class="flex-1 py-3 rounded-xl border-2 border-red-200 bg-red-50 text-red-700 text-sm font-semibold hover:bg-red-100 transition-colors"
+                (click)="rejectSignature()"
+              >
+                <span class="block text-base">✗</span>
+                Does Not Match
+              </button>
+              <button
+                class="flex-1 py-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100 transition-colors"
+                (click)="approveSignature()"
+              >
+                <span class="block text-base">✓</span>
+                Signature Matches
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    }
+
     <!-- ── Staff Picker Modal ──────────────────────────────────────────────── -->
     @if (staffPickerModal()) {
       <div class="fixed inset-0 bg-black/50 z-[9000] flex items-center justify-center p-4">
@@ -1848,7 +1900,9 @@ export class PosComponent implements OnInit, OnDestroy {
   emailSent      = signal(false);
   smsSending     = signal(false);
   smsSent        = signal(false);
-  lastTyroReceipt = signal<TyroTransactionResponse | null>(null);
+  lastTyroReceipt    = signal<TyroTransactionResponse | null>(null);
+  signatureModal     = signal(false);
+  pendingEftposAmount = signal(0);
 
   receiptNo = computed(() => {
     const d   = this.completedTxnDate();
@@ -2252,6 +2306,19 @@ export class PosComponent implements OnInit, OnDestroy {
     this.cashGiven.set(0);
   }
 
+  approveSignature() {
+    this.signatureModal.set(false);
+    this.recordPayment('Eftpos', this.pendingEftposAmount());
+    this.pendingEftposAmount.set(0);
+  }
+
+  rejectSignature() {
+    this.signatureModal.set(false);
+    this.pendingEftposAmount.set(0);
+    this.lastTyroReceipt.set(null);
+    this.toast.show('error', 'Signature verification failed. Transaction has been declined.', 6000);
+  }
+
   async confirmEftposPayment() {
     if (!this.tyroSvc.isConfigured()) {
       this.toast.show('error', 'EFTPOS not configured. Go to Settings → EFTPOS Settings.');
@@ -2285,7 +2352,13 @@ export class PosComponent implements OnInit, OnDestroy {
     this.lastTyroReceipt.set(response);
 
     if (response.result === 'APPROVED') {
-      this.recordPayment('Eftpos', amount);
+      if (response.requiresSignatureVerification) {
+        // Hold payment until cashier verifies the physical signature
+        this.pendingEftposAmount.set(amount);
+        this.signatureModal.set(true);
+      } else {
+        this.recordPayment('Eftpos', amount);
+      }
     } else {
       // Non-approved: show result message
       const label = response.result; // DECLINED | CANCELLED | REVERSED | SYSTEM ERROR
@@ -2457,9 +2530,13 @@ export class PosComponent implements OnInit, OnDestroy {
 
     const tyroSettings = this.tyroSvc.settings();
     const tyroReceipt = this.lastTyroReceipt() ?? this.tyroSvc.lastTransaction();
-    const tyroReceiptText = tyroReceipt?.merchantReceipt ?? tyroReceipt?.customerReceipt;
+    const tyroReceiptText = tyroReceipt?.customerReceipt ?? tyroReceipt?.merchantReceipt;
     const integratedReceiptHtml = tyroSettings.integratedReceipts
-      ? this.formatTyroReceiptBlock('--- MERCHANT COPY ---', tyroReceiptText)
+      ? this.formatTyroReceiptBlock('--- CUSTOMER COPY ---', tyroReceiptText)
+      : '';
+    // Merchant copy is always printed for signature-verified transactions
+    const merchantReceiptHtml = (tyroReceipt?.requiresSignatureVerification && tyroReceipt?.merchantReceipt)
+      ? this.formatTyroReceiptBlock('--- MERCHANT COPY ---', tyroReceipt.merchantReceipt)
       : '';
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
@@ -2511,6 +2588,7 @@ export class PosComponent implements OnInit, OnDestroy {
   ${pmtRows}
 </table>
 ${integratedReceiptHtml}
+${merchantReceiptHtml}
 <hr>
 <div class="footer">Thank you for your purchase!</div>
 <script>document.fonts.ready.then(()=>{window.print();})</script>
