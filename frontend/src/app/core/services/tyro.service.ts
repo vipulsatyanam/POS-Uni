@@ -10,6 +10,11 @@ export interface TyroSettings {
 
 export type TyroTransactionResult = 'APPROVED' | 'CANCELLED' | 'DECLINED' | 'REVERSED' | 'SYSTEM ERROR';
 
+export interface TyroReceiptData {
+  signatureRequired: boolean;
+  merchantReceipt: string;
+}
+
 export interface TyroTransactionResponse {
   result: TyroTransactionResult;
   transactionReference?: string;
@@ -307,7 +312,7 @@ export class TyroService {
     });
   }
 
-  async purchase(amountDollars: number): Promise<TyroTransactionResponse> {
+  async purchase(amountDollars: number, onReceipt?: (data: TyroReceiptData) => void): Promise<TyroTransactionResponse> {
     this._loading.set(true);
     this._status.set('Initiating payment…');
 
@@ -325,6 +330,7 @@ export class TyroService {
 
       const amountCents = Math.round(amountDollars * 100);
       this._lastTransaction.set(null);
+      let receiptData: TyroReceiptData | null = null;
 
       return await new Promise((resolve) => {
         client.initiatePurchase(
@@ -335,12 +341,21 @@ export class TyroService {
             enableSurcharge: false
           },
           {
-            receiptCallback: (_r) => { /* receipt data comes via transactionCompleteCallback */ },
+            receiptCallback: (r: unknown) => {
+              const raw = r as { signatureRequired?: boolean; merchantReceipt?: string };
+              receiptData = { signatureRequired: raw.signatureRequired ?? false, merchantReceipt: raw.merchantReceipt ?? '' };
+              onReceipt?.(receiptData);
+            },
             transactionCompleteCallback: (response) => {
-              this._status.set(`Transaction: ${response.result}`);
-              this._lastTransaction.set(response);
+              const enriched: TyroTransactionResponse = {
+                ...response,
+                merchantReceipt: receiptData?.merchantReceipt || response.merchantReceipt,
+                requiresSignatureVerification: receiptData?.signatureRequired ?? false
+              };
+              this._status.set(`Transaction: ${enriched.result}`);
+              this._lastTransaction.set(enriched);
               this._loading.set(false);
-              this.waitForTyroModalClose().then(() => resolve(response));
+              this.waitForTyroModalClose().then(() => resolve(enriched));
             }
           }
         );
@@ -356,7 +371,7 @@ export class TyroService {
     }
   }
 
-  async refund(amountDollars: number): Promise<TyroTransactionResponse> {
+  async refund(amountDollars: number, onReceipt?: (data: TyroReceiptData) => void): Promise<TyroTransactionResponse> {
     this._loading.set(true);
     this._status.set('Initiating refund…');
 
@@ -374,17 +389,27 @@ export class TyroService {
 
       const amountCents = Math.round(amountDollars * 100);
       this._lastTransaction.set(null);
+      let receiptData: TyroReceiptData | null = null;
 
       return await new Promise((resolve) => {
         client.initiateRefund(
           { amount: String(amountCents), integratedReceipt: settings.integratedReceipts },
           {
-            receiptCallback: (_r) => {},
+            receiptCallback: (r: unknown) => {
+              const raw = r as { signatureRequired?: boolean; merchantReceipt?: string };
+              receiptData = { signatureRequired: raw.signatureRequired ?? false, merchantReceipt: raw.merchantReceipt ?? '' };
+              onReceipt?.(receiptData);
+            },
             transactionCompleteCallback: (response) => {
-              this._status.set(`Refund: ${response.result}`);
-              this._lastTransaction.set(response);
+              const enriched: TyroTransactionResponse = {
+                ...response,
+                merchantReceipt: receiptData?.merchantReceipt || response.merchantReceipt,
+                requiresSignatureVerification: receiptData?.signatureRequired ?? false
+              };
+              this._status.set(`Refund: ${enriched.result}`);
+              this._lastTransaction.set(enriched);
               this._loading.set(false);
-              this.waitForTyroModalClose().then(() => resolve(response));
+              this.waitForTyroModalClose().then(() => resolve(enriched));
             }
           }
         );

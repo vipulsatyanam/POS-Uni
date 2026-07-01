@@ -10,7 +10,7 @@ import { CustomerService, STAFF_LIST } from '../../core/services/customer.servic
 import { TransactionService } from '../../core/services/transaction.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmailService } from '../../core/services/email.service';
-import { TyroService, TyroTransactionResponse } from '../../core/services/tyro.service';
+import { TyroService, TyroReceiptData, TyroTransactionResponse } from '../../core/services/tyro.service';
 import { CartItem, Customer, Product } from '../../core/models/product.model';
 import { environment } from '../../../environments/environment';
 
@@ -2344,10 +2344,18 @@ export class PosComponent implements OnInit, OnDestroy {
       }
     }
 
+    // Print merchant receipt immediately when receiptCallback fires with signatureRequired: true
+    // (required before transactionCompleteCallback — iClient.Retail.Integrated-Receipt-7)
+    const onReceipt = (receipt: TyroReceiptData) => {
+      if (receipt.signatureRequired && this.tyroSvc.settings().integratedReceipts && receipt.merchantReceipt) {
+        this.printMerchantReceiptOnly(receipt.merchantReceipt);
+      }
+    };
+
     // Use initiateRefund for refunds, initiatePurchase for sales (iClient.Retail.Refund-1 / LimitCheck)
     const response = isRefund
-      ? await this.tyroSvc.refund(amount)
-      : await this.tyroSvc.purchase(amount);
+      ? await this.tyroSvc.refund(amount, onReceipt)
+      : await this.tyroSvc.purchase(amount, onReceipt);
 
     this.lastTyroReceipt.set(response);
 
@@ -2478,6 +2486,24 @@ export class PosComponent implements OnInit, OnDestroy {
 
   printReceipt() {
     this.printViaQZ(this.buildReceiptHtml());
+  }
+
+  private printMerchantReceiptOnly(merchantReceipt: string): void {
+    if (!merchantReceipt?.trim()) return;
+    const escaped = this.escapeReceiptHtml(merchantReceipt);
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Courier New',Courier,monospace;font-size:9.5px;width:72mm;padding:5mm 4mm;color:#000}
+  .title{text-align:center;font-weight:bold;font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+  pre{font-size:8px;line-height:1.45;white-space:pre-wrap;word-break:break-word;font-family:inherit}
+  @media print{@page{size:80mm auto;margin:0}body{width:80mm;padding:4mm}}
+</style></head><body>
+<div class="title">--- MERCHANT COPY ---</div>
+<pre>${escaped}</pre>
+<script>window.print();</script>
+</body></html>`;
+    this.printViaQZ(html);
   }
 
   private escapeReceiptHtml(value: string): string {
